@@ -5,6 +5,8 @@ export interface Product {
   barcode?: string | null
   price: number
   stock: number
+  /** When false, service/labour — no stock enforcement at sale. */
+  trackInventory?: boolean
 }
 
 export interface SaleLine {
@@ -110,6 +112,17 @@ export interface FinancialsSummary {
   byDay: Array<{ day: string; saleCount: number; grossTotal: number }>
 }
 
+export type ProductPresetsState = {
+  entries: Array<{
+    productId: string
+    category: string
+    subCategory: string
+    label: string
+  }>
+  categories: string[]
+  subCategoriesByCategory: Record<string, string[]>
+}
+
 export interface StoreSettings {
   _id: string
   storeName: string
@@ -123,6 +136,8 @@ export interface StoreSettings {
   nextLayBySeq: number
   nextQuoteSeq: number
   nextHouseAccountSeq?: number
+  /** Present on GET /settings/store; synced with POS preset buttons. */
+  productPresets?: ProductPresetsState
 }
 
 /** GET /house-accounts */
