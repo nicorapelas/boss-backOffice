@@ -107,6 +107,24 @@
   box-sizing: border-box;
 }
 
+.server-connection-banner {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.88rem;
+  border-bottom: 1px solid transparent;
+}
+
+.server-connection-banner--offline {
+  background: #4f2d2d;
+  color: #ffd7d7;
+  border-bottom-color: #7a4545;
+}
+
+.server-connection-banner--online {
+  background: #244534;
+  color: #d5ffe6;
+  border-bottom-color: #396f53;
+}
+
 .screen {
   min-height: 100vh;
   display: flex;
@@ -183,6 +201,11 @@
 
 .btn.ghost {
   background: transparent;
+}
+
+.btn.danger {
+  border-color: #a44;
+  color: #f88;
 }
 
 .btn:disabled {
@@ -469,6 +492,10 @@
   flex-wrap: wrap;
 }
 
+.role-card-form-actions {
+  margin-top: 1rem;
+}
+
 .btn.small {
   padding: 0.25rem 0.5rem;
   font-size: 0.85rem;
@@ -515,10 +542,32 @@
   font-size: 0.82rem;
 }
 
+.products-label-settings {
+  width: 100%;
+  border: 1px dashed #3f3f3f;
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  box-sizing: border-box;
+}
+
+.products-label-settings summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.products-label-settings .inline-form {
+  margin-top: 0.6rem;
+}
+
 @media (prefers-color-scheme: light) {
   .products-search-field input {
     border-color: #ccc;
     background: #fff;
+  }
+
+  .products-label-settings {
+    border-color: #d5d5d5;
   }
 }
 
@@ -743,4 +792,81 @@ select {
 .audit-kpi-value {
   font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* Roles page */
+.role-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.role-perm-fieldset {
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 0;
+}
+
+.role-perm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.35rem 1rem;
+  margin-top: 0.5rem;
+}
+
+.role-perm-item {
+  align-items: flex-start;
+}
+
+.roles-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.role-editor-display-name {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.role-editor-display-name-label {
+  flex-shrink: 0;
+}
+
+.role-editor-display-name input {
+  flex: 1;
+  min-width: 10rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #111;
+  color: inherit;
+  font: inherit;
+}
+
+@media (prefers-color-scheme: light) {
+  .role-editor-display-name input {
+    border-color: #ccc;
+    background: #fff;
+  }
+}
+
+.role-card {
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #151515;
+}
+
+@media (prefers-color-scheme: light) {
+  .role-perm-fieldset,
+  .role-card {
+    border-color: #ddd;
+    background: #fafafa;
+  }
 }

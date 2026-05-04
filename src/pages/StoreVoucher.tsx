@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '../api/client'
 import type { StoreCreditAccountRow, StoreCreditLedgerRow } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
 
 function formatRefType(refType: StoreCreditLedgerRow['refType']) {
@@ -12,7 +13,7 @@ function formatRefType(refType: StoreCreditLedgerRow['refType']) {
 
 export function StoreVoucherPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const isAdmin = hasPermission(session?.user, 'store_credit.access')
   const [accounts, setAccounts] = useState<StoreCreditAccountRow[]>([])
   const [ledger, setLedger] = useState<StoreCreditLedgerRow[]>([])
   const [busy, setBusy] = useState(false)
@@ -50,7 +51,7 @@ export function StoreVoucherPage() {
     <BoShell>
       <h1>Store vouchers</h1>
       <p className="muted">Customer store credit balances and ledger (admin).</p>
-      {!isAdmin && <p className="error">Admin role required.</p>}
+      {!isAdmin && <p className="error">Permission required: store credit.</p>}
       {isAdmin && (
         <>
           <div className="panel audit-toolbar">

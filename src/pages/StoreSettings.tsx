@@ -2,26 +2,29 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { apiFetch } from '../api/client'
 import type { StoreSettings } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
 
 export function StoreSettingsPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const canRead =
+    hasPermission(session?.user, 'settings.read') || hasPermission(session?.user, 'settings.write')
+  const canSave = hasPermission(session?.user, 'settings.write')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [form, setForm] = useState<Partial<StoreSettings>>({})
 
   useEffect(() => {
-    if (!isAdmin) return
+    if (!canRead) return
     void apiFetch<StoreSettings>('/settings/store').then((d) => {
       setForm(d)
     })
-  }, [isAdmin])
+  }, [canRead])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!isAdmin) return
+    if (!canSave) return
     setBusy(true)
     setError(null)
     setSaved(false)
@@ -52,8 +55,8 @@ export function StoreSettingsPage() {
     <BoShell>
       <h1>Store &amp; lay-by settings</h1>
       <p className="muted">Used on POS receipts and lay-by forms (VAT-inclusive pricing, SA 14% default).</p>
-      {!isAdmin && <p className="error">Admin role required.</p>}
-      {isAdmin && (
+      {!canRead && <p className="error">Permission required: view store settings.</p>}
+      {canRead && (
         <form className="panel" onSubmit={(e) => void onSubmit(e)}>
           {error && <p className="error">{error}</p>}
           {saved && <p className="success">Saved.</p>}
@@ -62,6 +65,7 @@ export function StoreSettingsPage() {
             <input
               value={form.storeName ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, storeName: e.target.value }))}
+              disabled={!canSave}
             />
           </label>
           <label className="stack">
@@ -75,6 +79,7 @@ export function StoreSettingsPage() {
                   storeAddressLines: e.target.value.split('\n').map((s) => s.trim()),
                 }))
               }
+              disabled={!canSave}
             />
           </label>
           <label className="stack">
@@ -82,6 +87,7 @@ export function StoreSettingsPage() {
             <input
               value={form.storePhone ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, storePhone: e.target.value }))}
+              disabled={!canSave}
             />
           </label>
           <label className="stack">
@@ -89,6 +95,7 @@ export function StoreSettingsPage() {
             <input
               value={form.storeVatNumber ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, storeVatNumber: e.target.value }))}
+              disabled={!canSave}
             />
           </label>
           <label className="stack">
@@ -97,6 +104,7 @@ export function StoreSettingsPage() {
               rows={6}
               value={form.layByTerms ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, layByTerms: e.target.value }))}
+              disabled={!canSave}
             />
           </label>
           <label className="stack">
@@ -107,6 +115,7 @@ export function StoreSettingsPage() {
               max={100}
               value={form.defaultDepositPercent ?? 30}
               onChange={(e) => setForm((f) => ({ ...f, defaultDepositPercent: Number(e.target.value) }))}
+              disabled={!canSave}
             />
           </label>
           <label className="stack">
@@ -117,6 +126,7 @@ export function StoreSettingsPage() {
               max={120}
               value={form.defaultExpiryMonths ?? 3}
               onChange={(e) => setForm((f) => ({ ...f, defaultExpiryMonths: Number(e.target.value) }))}
+              disabled={!canSave}
             />
           </label>
           <label className="stack">
@@ -128,11 +138,16 @@ export function StoreSettingsPage() {
               max={0.5}
               value={form.vatRate ?? 0.14}
               onChange={(e) => setForm((f) => ({ ...f, vatRate: Number(e.target.value) }))}
+              disabled={!canSave}
             />
           </label>
-          <button type="submit" className="btn primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
+          {canSave ? (
+            <button type="submit" className="btn primary" disabled={busy}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+          ) : (
+            <p className="muted">View only — you do not have permission to change these settings.</p>
+          )}
         </form>
       )}
     </BoShell>

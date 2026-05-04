@@ -3,13 +3,14 @@ import { apiFetch } from '../api/client'
 import type { MigrationAudit } from '../api/types'
 import { BoShell } from '../layouts/BoShell'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
 
 type BarcodeDraft = Record<string, string>
 type BusyState = Record<string, boolean>
 
 export function DataCleanupPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const isAdmin = hasPermission(session?.user, 'migration.access')
   const [audit, setAudit] = useState<MigrationAudit | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -90,7 +91,7 @@ export function DataCleanupPage() {
       <h1>Data Cleanup</h1>
       <p className="muted">Fix migration data quality issues directly in Back Office.</p>
 
-      {!isAdmin && <p className="error">Admin role required.</p>}
+      {!isAdmin && <p className="error">Permission required: migration tools.</p>}
       {isAdmin && (
         <>
           <div className="panel audit-toolbar">

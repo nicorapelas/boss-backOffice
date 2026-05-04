@@ -5,11 +5,16 @@ import { DataCleanupPage } from './pages/DataCleanup'
 import { LayBysPage } from './pages/LayBys'
 import { FinancialsPage } from './pages/Financials'
 import { HouseAccountsPage } from './pages/HouseAccounts'
+import { LabelSettingsPage } from './pages/LabelSettings'
 import { Login } from './pages/Login'
 import { MigrationAuditPage } from './pages/MigrationAudit'
 import { Products } from './pages/Products'
+import { SuppliersPage } from './pages/Suppliers'
 import { StoreSettingsPage } from './pages/StoreSettings'
 import { StoreVoucherPage } from './pages/StoreVoucher'
+import { RolesPage } from './pages/Roles'
+import { ShiftsPage } from './pages/Shifts'
+import { SalesReceiptsPage } from './pages/SalesReceipts'
 import { UsersPage } from './pages/Users'
 import './App.css'
 
@@ -21,8 +26,13 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<RequireAuth />}>
             <Route path="/" element={<Products />} />
+            <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/roles" element={<RolesPage />} />
             <Route path="/financials" element={<FinancialsPage />} />
+            <Route path="/sales" element={<SalesReceiptsPage />} />
+            <Route path="/shifts" element={<ShiftsPage />} />
+            <Route path="/label-settings" element={<LabelSettingsPage />} />
             <Route path="/audit" element={<MigrationAuditPage />} />
             <Route path="/cleanup" element={<DataCleanupPage />} />
             <Route path="/store-settings" element={<StoreSettingsPage />} />

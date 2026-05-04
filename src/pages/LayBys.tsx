@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '../api/client'
 import type { LayByListItem } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
 
 export function LayBysPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const isAdmin = hasPermission(session?.user, 'laybys.admin')
   const [status, setStatus] = useState<string>('')
   const [list, setList] = useState<LayByListItem[]>([])
   const [busy, setBusy] = useState(false)
@@ -36,7 +37,7 @@ export function LayBysPage() {
     <BoShell>
       <h1>Lay-bys</h1>
       <p className="muted">All lay-by agreements (admin).</p>
-      {!isAdmin && <p className="error">Admin role required.</p>}
+      {!isAdmin && <p className="error">Permission required: lay-by administration.</p>}
       {isAdmin && (
         <>
           <div className="panel audit-toolbar">

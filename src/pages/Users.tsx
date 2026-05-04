@@ -1,13 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { apiFetch } from '../api/client'
-import type { BackOfficeUser } from '../api/types'
-import { BoShell } from '../layouts/BoShell'
+import type { BackOfficeUser, BoRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
+import { BoShell } from '../layouts/BoShell'
 
 export function UsersPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const canManage = hasPermission(session?.user, 'users.manage')
   const [users, setUsers] = useState<BackOfficeUser[]>([])
+  const [roles, setRoles] = useState<BoRole[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [passwordDraft, setPasswordDraft] = useState<Record<string, string>>({})
@@ -20,16 +23,25 @@ export function UsersPage() {
     password: '',
     displayName: '',
     badgeCode: '',
-    role: 'cashier' as 'admin' | 'cashier',
+    roleId: '',
   })
 
   async function load() {
-    if (!isAdmin) return
+    if (!canManage) return
     setBusy(true)
     setError(null)
     try {
-      const list = await apiFetch<BackOfficeUser[]>('/users')
+      const [list, rlist] = await Promise.all([
+        apiFetch<BackOfficeUser[]>('/users'),
+        apiFetch<BoRole[]>('/roles'),
+      ])
       setUsers(list)
+      setRoles(rlist)
+      const cashier = rlist.find((r) => r.slug === 'cashier')
+      setNewUser((nu) => ({
+        ...nu,
+        roleId: nu.roleId || (cashier ? cashier._id : ''),
+      }))
       const drafts: Record<string, string> = {}
       const badgeCodes: Record<string, string> = {}
       const profile: Record<string, { email: string; displayName: string }> = {}
@@ -49,7 +61,7 @@ export function UsersPage() {
   useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin])
+  }, [canManage])
 
   async function patchUser(id: string, payload: Record<string, unknown>) {
     setError(null)
@@ -86,18 +98,29 @@ export function UsersPage() {
 
   async function createUser(e: FormEvent) {
     e.preventDefault()
+    if (!newUser.roleId) {
+      setError('Choose a role')
+      return
+    }
     setError(null)
     try {
       await apiFetch('/users', {
         method: 'POST',
-        body: JSON.stringify(newUser),
+        body: JSON.stringify({
+          email: newUser.email,
+          password: newUser.password,
+          displayName: newUser.displayName || undefined,
+          badgeCode: newUser.badgeCode || undefined,
+          roleId: newUser.roleId,
+        }),
       })
+      const cashier = roles.find((r) => r.slug === 'cashier')
       setNewUser({
         email: '',
         password: '',
         displayName: '',
         badgeCode: '',
-        role: 'cashier',
+        roleId: cashier?._id ?? '',
       })
       await load()
     } catch (err) {
@@ -121,10 +144,12 @@ export function UsersPage() {
   return (
     <BoShell>
       <h1>User Management</h1>
-      <p className="muted">Enable staff login, set passwords, and manage roles.</p>
+      <p className="muted">
+        Assign roles defined on the <Link to="/roles">Roles</Link> page. Users receive permissions from their role.
+      </p>
 
-      {!isAdmin && <p className="error">Admin role required.</p>}
-      {isAdmin && (
+      {!canManage && <p className="error">Permission required: manage users.</p>}
+      {canManage && (
         <>
           <div className="panel audit-toolbar">
             <button type="button" className="btn primary" onClick={() => void load()} disabled={busy}>
@@ -176,13 +201,16 @@ export function UsersPage() {
               <label>
                 Role
                 <select
-                  value={newUser.role}
-                  onChange={(e) =>
-                    setNewUser((p) => ({ ...p, role: e.target.value as 'admin' | 'cashier' }))
-                  }
+                  value={newUser.roleId}
+                  onChange={(e) => setNewUser((p) => ({ ...p, roleId: e.target.value }))}
+                  required
                 >
-                  <option value="cashier">cashier</option>
-                  <option value="admin">admin</option>
+                  <option value="">Choose…</option>
+                  {roles.map((r) => (
+                    <option key={r._id} value={r._id}>
+                      {r.name} ({r.slug})
+                    </option>
+                  ))}
                 </select>
               </label>
               <button type="submit" className="btn primary" disabled={busy}>
@@ -199,6 +227,9 @@ export function UsersPage() {
                     <div>
                       <h3>{u.displayName || u.email}</h3>
                       <p className="muted">{u.email}</p>
+                      <p className="muted">
+                        Role: <strong>{u.roleName ?? u.role}</strong> ({u.role})
+                      </p>
                     </div>
                   </header>
 
@@ -256,13 +287,14 @@ export function UsersPage() {
                         <label>
                           Role
                           <select
-                            value={u.role}
-                            onChange={(e) =>
-                              void patchUser(u._id, { role: e.target.value as 'admin' | 'cashier' })
-                            }
+                            value={u.roleId}
+                            onChange={(e) => void patchUser(u._id, { roleId: e.target.value })}
                           >
-                            <option value="cashier">cashier</option>
-                            <option value="admin">admin</option>
+                            {roles.map((r) => (
+                              <option key={r._id} value={r._id}>
+                                {r.name} ({r.slug})
+                              </option>
+                            ))}
                           </select>
                         </label>
                         <label className="check-inline">
@@ -343,4 +375,3 @@ export function UsersPage() {
     </BoShell>
   )
 }
-

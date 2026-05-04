@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '../api/client'
 import type { HouseAccountLedgerRow, HouseAccountRow } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
 
 function round2(n: number) {
@@ -10,7 +11,7 @@ function round2(n: number) {
 
 export function HouseAccountsPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const isAdmin = hasPermission(session?.user, 'house_accounts.access')
   const [accounts, setAccounts] = useState<HouseAccountRow[]>([])
   const [ledgerByAccount, setLedgerByAccount] = useState<Record<string, HouseAccountLedgerRow[]>>({})
   const [busy, setBusy] = useState(false)
@@ -158,7 +159,7 @@ export function HouseAccountsPage() {
     <BoShell>
       <h1>House accounts (AR)</h1>
       <p className="muted">On-account customers: balances owed to the store. Cashiers charge sales on the POS; record payments here or at the till.</p>
-      {!isAdmin && <p className="error">Admin role required.</p>}
+      {!isAdmin && <p className="error">Permission required: house accounts.</p>}
       {isAdmin && (
         <>
           <div className="panel audit-toolbar">

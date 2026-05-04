@@ -1,29 +1,174 @@
+export interface RoleRow {
+  _id: string
+  slug: string
+  name: string
+  permissions: string[]
+  isSystem: boolean
+}
+
+export type BoRole = {
+  _id: string
+  slug: string
+  name: string
+  permissions: string[]
+  isSystem: boolean
+}
+
 export interface Product {
   _id: string
   name: string
   sku: string
+  category?: string | null
+  subCategory?: string | null
   barcode?: string | null
   price: number
   stock: number
   /** When false, service/labour — no stock enforcement at sale. */
   trackInventory?: boolean
+  /** Progressive volume pricing (ordinal 1 = first of this line’s quantity). */
+  volumeTieringEnabled?: boolean
+  volumeTiers?: Array<{ minQty: number; maxQty: number | null; unitPrice: number }>
+}
+
+export interface Supplier {
+  _id: string
+  name: string
+  code: string
+  active: boolean
+  contactName?: string | null
+  email?: string | null
+  phone?: string | null
+  accountNumber?: string | null
+  notes?: string | null
+}
+
+export type SupplierOfferProductRef = { _id: string; name: string; sku: string }
+
+export type SupplierOfferSupplierRef = { _id: string; name: string; code: string; active?: boolean }
+
+export interface SupplierOffer {
+  _id: string
+  product: SupplierOfferProductRef | string
+  supplier?: SupplierOfferSupplierRef | string
+  supplierSku?: string | null
+  unitCost: number
+  unitsPerPack: number
+  minOrderQty: number
+  leadTimeDays?: number | null
+  preferred: boolean
+  priceEffectiveDate?: string | null
 }
 
 export interface SaleLine {
-  product: string
+  product?: string
   name: string
   quantity: number
   unitPrice: number
   lineTotal: number
 }
 
+/** Populated cashier from GET /sales (Back Office / API). */
+export type SaleCashierInfo = {
+  email?: string
+  displayName?: string
+  role?: string
+}
+
 export interface Sale {
   _id: string
-  cashier: string
+  /** 10 hex characters — set on new sales; use for receipts and refunds */
+  saleId?: string
+  /** Register / till code snapshot when the sale was recorded. */
+  tillCode?: string
+  cashier: SaleCashierInfo | string
   items: SaleLine[]
   total: number
   paymentMethod?: string
+  payment?: {
+    cashAmount?: number
+    cardAmount?: number
+    tenderedCash?: number
+    changeDue?: number
+  }
   createdAt?: string
+  refundStatus?: 'partial' | 'refunded'
+  refundedAt?: string
+  refundNote?: string
+  refundPayoutMethod?: 'cash' | 'card'
+  refundPayoutAmount?: number
+  storeCreditAmount?: number
+  onAccountAmount?: number
+  houseAccountNumber?: string
+  houseAccountName?: string
+  purchaseOrderNumber?: string
+  quoteId?: string
+  layById?: string | null
+  legacy?: { source?: string; receiptNo?: number; terminal?: number }
+}
+
+export interface SaleListResponse {
+  total: number
+  sales: Sale[]
+}
+
+export interface ShiftCashDifference {
+  kind: 'over' | 'under'
+  amount: number
+  note?: string
+  source: 'pos' | 'backoffice'
+  createdAt: string
+}
+
+export interface ShiftSummary {
+  turnover: number
+  cashSales: number
+  cardSales: number
+  voucherTotal: number
+  onAccountTotal: number
+  refundTotal: number
+  refundCashTotal: number
+  refundCardTotal: number
+  refundCount: number
+  refundCashierNames?: string[]
+  refundDetails?: Array<{
+    saleId?: string
+    cashierId?: string
+    cashierName?: string
+    method?: 'cash' | 'card'
+    refundTotal: number
+    refundCash: number
+    refundCard: number
+  }>
+  layByCompletions: number
+  layByPaymentCount?: number
+  layByPaymentCashTotal?: number
+  layByPaymentCardTotal?: number
+  layByPaymentStoreCreditTotal?: number
+  layByPaymentTotal?: number
+  quoteConversions: number
+  tabClosures: number
+  cashierSales: Array<{ cashierId: string; cashierName?: string; salesCount: number; total: number }>
+  priceOverrides?: Array<{
+    saleId?: string
+    cashierId?: string
+    cashierName?: string
+    itemName: string
+    quantity: number
+    listUnitPrice: number
+    overriddenUnitPrice: number
+    lineDiscount: number
+  }>
+}
+
+export interface ShiftRow {
+  _id: string
+  tillCode: string
+  status: 'open' | 'closed'
+  openedAt: string
+  closedAt?: string | null
+  zNumber?: number | null
+  summary?: ShiftSummary
+  cashDifferences: ShiftCashDifference[]
 }
 
 export interface BackOfficeUser {
@@ -31,7 +176,11 @@ export interface BackOfficeUser {
   email: string
   badgeCode?: string | null
   displayName?: string
-  role: 'admin' | 'cashier'
+  roleId: string
+  role: string
+  roleName?: string
+  rolePermissions?: string[]
+  roleIsSystem?: boolean
   active?: boolean
   legacy?: {
     source?: 'vector'
@@ -79,7 +228,8 @@ export interface MigrationAudit {
       _id: string
       email: string
       displayName?: string
-      role: 'admin' | 'cashier'
+      role?: string
+      roleId?: { slug?: string; name?: string }
       legacy?: {
         userNo?: number
         canLogin?: boolean

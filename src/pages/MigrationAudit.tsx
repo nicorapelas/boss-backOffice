@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '../api/client'
 import type { MigrationAudit } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
 
 function Item({ label, value }: { label: string; value: number }) {
@@ -15,7 +16,7 @@ function Item({ label, value }: { label: string; value: number }) {
 
 export function MigrationAuditPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const isAdmin = hasPermission(session?.user, 'migration.access')
   const [data, setData] = useState<MigrationAudit | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -47,7 +48,7 @@ export function MigrationAuditPage() {
       </p>
 
       {!isAdmin && (
-        <p className="error">Admin role required.</p>
+        <p className="error">Permission required: migration audit.</p>
       )}
 
       {isAdmin && (

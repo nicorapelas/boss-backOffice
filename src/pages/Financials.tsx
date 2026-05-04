@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { apiFetch } from '../api/client'
 import type { FinancialsSummary } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
 
 function isoDay(d: Date) {
@@ -10,7 +11,7 @@ function isoDay(d: Date) {
 
 export function FinancialsPage() {
   const { session } = useAuth()
-  const isAdmin = session?.user.role === 'admin'
+  const isAdmin = hasPermission(session?.user, 'financials.read')
 
   const [from, setFrom] = useState(() => {
     const d = new Date()
@@ -58,7 +59,7 @@ export function FinancialsPage() {
       <h1>Financials</h1>
       <p className="muted">Sales totals by date range.</p>
 
-      {!isAdmin && <p className="error">Admin role required.</p>}
+      {!isAdmin && <p className="error">Permission required: financials.</p>}
 
       {isAdmin && (
         <>

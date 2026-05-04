@@ -24,3 +24,45 @@ contextBridge.exposeInMainWorld('electronAuth', {
   getBundle: () => ipcRenderer.invoke('auth:get') as Promise<string | null>,
   clear: () => ipcRenderer.invoke('auth:clear') as Promise<{ ok: boolean }>,
 })
+
+contextBridge.exposeInMainWorld('electronBo', {
+  printProductLabel: (
+    transport: unknown,
+    label: unknown,
+    opts?: {
+      copies?: number
+      layout?: { widthMm: number; heightMm: number; gapMm: number }
+      /** Built-in preset only; omit when using a custom saved template. */
+      presetId?: 'compactRetail' | 'priceFocus' | 'priceFocusSku' | 'barcodeFocus' | 'minimal'
+      template?: {
+        nameX: number
+        nameY: number
+        skuX: number
+        skuY: number
+        priceX: number
+        priceY: number
+        barcodeX: number
+        barcodeY: number
+        barcodeHeight: number
+        barcodeTextX: number
+        barcodeTextY: number
+      }
+    },
+  ) =>
+    ipcRenderer.invoke('bo:label:print', { transport, label, ...opts }) as Promise<{ ok: boolean; error?: string }>,
+  printLabelFontTest: (
+    transport: unknown,
+    opts?: {
+      copies?: number
+      layout?: { widthMm: number; heightMm: number; gapMm: number }
+    },
+  ) =>
+    ipcRenderer.invoke('bo:label:print-font-test', { transport, ...opts }) as Promise<{ ok: boolean; error?: string }>,
+  detectLabelTransport: () =>
+    ipcRenderer.invoke('bo:label:detect-transport') as Promise<{
+      ok: boolean
+      transport?: { kind: 'usb'; path: string } | { kind: 'lan'; host: string; port: number }
+      candidates: string[]
+      error?: string
+    }>,
+})

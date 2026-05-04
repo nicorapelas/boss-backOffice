@@ -1,7 +1,7 @@
 import type { Product, ProductPresetsState } from '../api/types'
 
 /** Mirrors POS `PRESET_ENTRY_MAX` — keep in sync with server. */
-export const PRESET_ENTRY_MAX = 16
+export const PRESET_ENTRY_MAX = 200
 
 export type PresetEntry = ProductPresetsState['entries'][number]
 
