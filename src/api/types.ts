@@ -94,7 +94,7 @@ export interface Sale {
   refundStatus?: 'partial' | 'refunded'
   refundedAt?: string
   refundNote?: string
-  refundPayoutMethod?: 'cash' | 'card'
+  refundPayoutMethod?: 'cash' | 'card' | 'store_credit'
   refundPayoutAmount?: number
   storeCreditAmount?: number
   onAccountAmount?: number
@@ -134,7 +134,7 @@ export interface ShiftSummary {
     saleId?: string
     cashierId?: string
     cashierName?: string
-    method?: 'cash' | 'card'
+    method?: 'cash' | 'card' | 'store_credit'
     refundTotal: number
     refundCash: number
     refundCard: number
