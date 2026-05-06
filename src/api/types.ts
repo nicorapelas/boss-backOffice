@@ -182,6 +182,7 @@ export interface BackOfficeUser {
   rolePermissions?: string[]
   roleIsSystem?: boolean
   active?: boolean
+  allowOfflineLogin?: boolean
   legacy?: {
     source?: 'vector'
     userNo?: number

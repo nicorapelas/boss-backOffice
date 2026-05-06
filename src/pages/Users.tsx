@@ -24,6 +24,7 @@ export function UsersPage() {
     displayName: '',
     badgeCode: '',
     roleId: '',
+    allowOfflineLogin: false,
   })
 
   async function load() {
@@ -112,6 +113,7 @@ export function UsersPage() {
           displayName: newUser.displayName || undefined,
           badgeCode: newUser.badgeCode || undefined,
           roleId: newUser.roleId,
+          allowOfflineLogin: newUser.allowOfflineLogin,
         }),
       })
       const cashier = roles.find((r) => r.slug === 'cashier')
@@ -121,6 +123,7 @@ export function UsersPage() {
         displayName: '',
         badgeCode: '',
         roleId: cashier?._id ?? '',
+        allowOfflineLogin: false,
       })
       await load()
     } catch (err) {
@@ -212,6 +215,14 @@ export function UsersPage() {
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="check-inline">
+                <input
+                  type="checkbox"
+                  checked={newUser.allowOfflineLogin}
+                  onChange={(e) => setNewUser((p) => ({ ...p, allowOfflineLogin: e.target.checked }))}
+                />
+                <span>Allow offline login</span>
               </label>
               <button type="submit" className="btn primary" disabled={busy}>
                 Create user
@@ -312,6 +323,14 @@ export function UsersPage() {
                             onChange={(e) => void patchUser(u._id, { canLogin: e.target.checked })}
                           />
                           <span>{u.legacy?.canLogin === false ? 'Locked' : 'Unlocked'}</span>
+                        </label>
+                        <label className="check-inline">
+                          <input
+                            type="checkbox"
+                            checked={u.allowOfflineLogin === true}
+                            onChange={(e) => void patchUser(u._id, { allowOfflineLogin: e.target.checked })}
+                          />
+                          <span>{u.allowOfflineLogin ? 'Offline login allowed' : 'Offline login blocked'}</span>
                         </label>
                       </div>
                     </section>
