@@ -15,6 +15,7 @@ import { StoreVoucherPage } from './pages/StoreVoucher'
 import { RolesPage } from './pages/Roles'
 import { ShiftsPage } from './pages/Shifts'
 import { SalesReceiptsPage } from './pages/SalesReceipts'
+import { OfflineConflictsPage } from './pages/OfflineConflicts'
 import { UsersPage } from './pages/Users'
 import './App.css'
 
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/financials" element={<FinancialsPage />} />
             <Route path="/sales" element={<SalesReceiptsPage />} />
+            <Route path="/offline-conflicts" element={<OfflineConflictsPage />} />
             <Route path="/shifts" element={<ShiftsPage />} />
             <Route path="/label-settings" element={<LabelSettingsPage />} />
             <Route path="/audit" element={<MigrationAuditPage />} />

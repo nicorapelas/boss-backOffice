@@ -65,6 +65,9 @@ export interface SaleLine {
   quantity: number
   unitPrice: number
   lineTotal: number
+  stockOverrideApproved?: boolean
+  stockOverrideScope?: 'offline' | 'online'
+  stockOverrideAvailableQty?: number
 }
 
 /** Populated cashier from GET /sales (Back Office / API). */
@@ -109,6 +112,36 @@ export interface Sale {
 export interface SaleListResponse {
   total: number
   sales: Sale[]
+}
+
+export interface OfflineSyncConflictLine {
+  productId: string
+  name: string
+  qty: number
+}
+
+export interface OfflineSyncConflict {
+  _id: string
+  clientLocalId: string
+  tillCode?: string
+  scope: 'offline' | 'online'
+  errorMessage: string
+  status: 'open' | 'resolved'
+  firstSeenAt: string
+  lastSeenAt: string
+  resolvedAt?: string | null
+  resolvedBy?: { email?: string; displayName?: string } | null
+  resolutionAction?: 'stock_adjusted' | 'sale_retried' | 'waived' | 'other' | null
+  resolutionNote?: string | null
+  retryRequestedAt?: string | null
+  retryRequestedBy?: { email?: string; displayName?: string } | null
+  lines: OfflineSyncConflictLine[]
+  attemptCount: number
+}
+
+export interface OfflineSyncConflictListResponse {
+  total: number
+  conflicts: OfflineSyncConflict[]
 }
 
 export interface ShiftCashDifference {

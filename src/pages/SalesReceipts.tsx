@@ -38,6 +38,7 @@ type FilterForm = {
   tillCode: string
   paymentMethod: string
   refund: 'all' | 'yes' | 'no'
+  stockOverride: 'all' | 'yes' | 'no'
   q: string
 }
 
@@ -56,6 +57,7 @@ function initialFilters(): FilterForm {
     tillCode: '',
     paymentMethod: '',
     refund: 'all',
+    stockOverride: 'all',
     q: '',
   }
 }
@@ -71,6 +73,7 @@ function filtersToQueryString(f: FilterForm, skip: number): string {
   if (f.tillCode.trim()) sp.set('tillCode', f.tillCode.trim().toUpperCase())
   if (f.paymentMethod.trim()) sp.set('paymentMethod', f.paymentMethod.trim())
   if (f.refund !== 'all') sp.set('refund', f.refund)
+  if (f.stockOverride !== 'all') sp.set('stockOverride', f.stockOverride)
   if (f.q.trim()) sp.set('q', f.q.trim())
   sp.set('skip', String(skip))
   sp.set('limit', String(PAGE_SIZE))
@@ -267,6 +270,17 @@ export function SalesReceiptsPage() {
                 <option value="yes">Refunded</option>
               </select>
             </label>
+            <label>
+              Stock override
+              <select
+                value={form.stockOverride}
+                onChange={(e) => setForm((f) => ({ ...f, stockOverride: e.target.value as FilterForm['stockOverride'] }))}
+              >
+                <option value="all">All</option>
+                <option value="yes">Override used</option>
+                <option value="no">No override</option>
+              </select>
+            </label>
             <label style={{ minWidth: '12rem', flex: '1 1 10rem' }}>
               Search
               <input
@@ -442,7 +456,18 @@ export function SalesReceiptsPage() {
                                   <tbody>
                                     {(s.items ?? []).map((line, i) => (
                                       <tr key={i}>
-                                        <td>{line.name}</td>
+                                        <td>
+                                          {line.name}
+                                          {line.stockOverrideApproved ? (
+                                            <span className="muted" style={{ marginLeft: '0.4rem' }}>
+                                              [override {line.stockOverrideScope ?? 'online'}
+                                              {typeof line.stockOverrideAvailableQty === 'number'
+                                                ? ` · avail ${line.stockOverrideAvailableQty}`
+                                                : ''}
+                                              ]
+                                            </span>
+                                          ) : null}
+                                        </td>
                                         <td>{line.quantity}</td>
                                         <td>{line.unitPrice.toFixed(2)}</td>
                                         <td>{line.lineTotal.toFixed(2)}</td>

@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { apiFetch } from '../api/client'
+import type { OfflineSyncConflictListResponse } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import { useServerConnection } from '../network/useServerConnection'
@@ -8,6 +10,32 @@ export function BoShell({ children }: { children: ReactNode }) {
   const { session, logout } = useAuth()
   const u = session?.user
   const { disconnected, recovered } = useServerConnection()
+  const canReadSales = hasPermission(u, 'sales.read')
+  const [openOfflineConflictCount, setOpenOfflineConflictCount] = useState(0)
+
+  useEffect(() => {
+    if (!canReadSales) {
+      setOpenOfflineConflictCount(0)
+      return
+    }
+    let cancelled = false
+    const load = async () => {
+      try {
+        const result = await apiFetch<OfflineSyncConflictListResponse>('/sales/offline-conflicts?status=open&limit=500')
+        if (!cancelled) setOpenOfflineConflictCount(Math.max(0, Number(result.total ?? 0)))
+      } catch {
+        if (!cancelled) setOpenOfflineConflictCount(0)
+      }
+    }
+    void load()
+    const t = window.setInterval(() => {
+      void load()
+    }, 30000)
+    return () => {
+      cancelled = true
+      window.clearInterval(t)
+    }
+  }, [canReadSales])
 
   return (
     <div className="shell">
@@ -46,6 +74,11 @@ export function BoShell({ children }: { children: ReactNode }) {
           ) : null}
           {hasPermission(u, 'financials.read') ? <Link to="/financials">Financials</Link> : null}
           {hasPermission(u, 'sales.read') ? <Link to="/sales">Sales / receipts</Link> : null}
+          {hasPermission(u, 'sales.read') ? (
+            <Link to="/offline-conflicts">
+              Offline conflicts{openOfflineConflictCount > 0 ? ` (${openOfflineConflictCount})` : ''}
+            </Link>
+          ) : null}
           {hasPermission(u, 'shifts.read') ? <Link to="/shifts">Shifts / Z reports</Link> : null}
           {hasPermission(u, 'migration.access') ? (
             <>
