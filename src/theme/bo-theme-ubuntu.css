@@ -1,0 +1,162 @@
+/* Ubuntu — indigo / violet base with cyan accents (aligned with POS Ubuntu theme). */
+
+html[data-bo-theme='ubuntu'] .shell-sidebar {
+  border-right-color: #6366f1;
+  background: linear-gradient(180deg, #1e1b4b 0%, #312e81 55%, #1e1b4b 100%);
+}
+
+html[data-bo-theme='ubuntu'] .shell-sidebar-brand {
+  border-bottom-color: #818cf8;
+}
+
+html[data-bo-theme='ubuntu'] .shell-sub {
+  color: #c4b5fd;
+}
+
+html[data-bo-theme='ubuntu'] .shell-nav-link {
+  color: #e9d5ff;
+}
+
+html[data-bo-theme='ubuntu'] .shell-nav-link:hover {
+  color: #faf5ff;
+  background: rgba(139, 92, 246, 0.22);
+}
+
+html[data-bo-theme='ubuntu'] .shell-nav-link--active {
+  color: #ecfeff;
+  background: rgba(8, 145, 178, 0.35);
+  border-color: #22d3ee;
+}
+
+html[data-bo-theme='ubuntu'] .shell-sidebar-footer {
+  border-top-color: #818cf8;
+}
+
+html[data-bo-theme='ubuntu'] .shell-user {
+  color: #ddd6fe;
+}
+
+html[data-bo-theme='ubuntu'] .shell-content {
+  background: linear-gradient(155deg, #1e1b4b 0%, #312e81 38%, #115e59 100%);
+}
+
+html[data-bo-theme='ubuntu'] .shell-window-actions {
+  border-bottom-color: rgba(167, 139, 250, 0.35);
+}
+
+html[data-bo-theme='ubuntu'] .shell-main {
+  color: #f5f3ff;
+}
+
+html[data-bo-theme='ubuntu'] .muted {
+  color: #c4b5fd;
+}
+
+html[data-bo-theme='ubuntu'] .panel {
+  background: rgba(49, 46, 129, 0.72);
+  border-color: #8b5cf6;
+  box-shadow: 0 2px 0 rgba(139, 92, 246, 0.2);
+}
+
+html[data-bo-theme='ubuntu'] .form input,
+html[data-bo-theme='ubuntu'] .search,
+html[data-bo-theme='ubuntu'] select,
+html[data-bo-theme='ubuntu'] .inline-form input,
+html[data-bo-theme='ubuntu'] .products-search-field input,
+html[data-bo-theme='ubuntu'] .cleanup-input,
+html[data-bo-theme='ubuntu'] .inline-password input,
+html[data-bo-theme='ubuntu'] .role-editor-display-name input {
+  border-color: #6366f1;
+  background: #1e1b4b;
+  color: #f5f3ff;
+}
+
+html[data-bo-theme='ubuntu'] .btn {
+  border-color: #818cf8;
+  background: rgba(49, 46, 129, 0.85);
+  color: #f5f3ff;
+}
+
+html[data-bo-theme='ubuntu'] .btn.primary {
+  background: #059669;
+  border-color: #047857;
+  color: #fff;
+}
+
+html[data-bo-theme='ubuntu'] .btn.ghost {
+  background: transparent;
+  border-color: rgba(167, 139, 250, 0.55);
+}
+
+html[data-bo-theme='ubuntu'] .product-row {
+  border-color: #a78bfa;
+  background: rgba(76, 29, 149, 0.45);
+}
+
+html[data-bo-theme='ubuntu'] .table th,
+html[data-bo-theme='ubuntu'] .table td {
+  border-bottom-color: #818cf8;
+}
+
+html[data-bo-theme='ubuntu'] .modal-backdrop {
+  background: rgba(15, 23, 42, 0.72);
+}
+
+html[data-bo-theme='ubuntu'] .product-edit-presets {
+  border-top-color: #818cf8;
+}
+
+html[data-bo-theme='ubuntu'] .product-edit-preset-row {
+  border-bottom-color: rgba(129, 140, 248, 0.45);
+}
+
+html[data-bo-theme='ubuntu'] .products-label-settings {
+  border-color: rgba(167, 139, 250, 0.45);
+}
+
+html[data-bo-theme='ubuntu'] .user-card {
+  border-color: #a78bfa;
+  background: rgba(49, 46, 129, 0.55);
+}
+
+html[data-bo-theme='ubuntu'] .user-card-block {
+  border-color: #818cf8;
+  background: rgba(30, 27, 75, 0.65);
+}
+
+html[data-bo-theme='ubuntu'] .audit-kpi {
+  border-color: #818cf8;
+  background: rgba(49, 46, 129, 0.55);
+}
+
+html[data-bo-theme='ubuntu'] .role-perm-fieldset,
+html[data-bo-theme='ubuntu'] .role-card {
+  border-color: #818cf8;
+  background: rgba(49, 46, 129, 0.55);
+}
+
+html[data-bo-theme='ubuntu'] .bo-settings-section {
+  border-color: #8b5cf6;
+  background: rgba(30, 27, 75, 0.85);
+}
+
+html[data-bo-theme='ubuntu'] .bo-theme-option {
+  border-color: #6366f1;
+  background: rgba(30, 27, 75, 0.95);
+}
+
+html[data-bo-theme='ubuntu'] .bo-theme-option:hover {
+  border-color: #22d3ee;
+}
+
+html[data-bo-theme='ubuntu'] .bo-theme-option--selected {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.35);
+  background: rgba(8, 145, 178, 0.28);
+}
+
+@media (max-width: 768px) {
+  html[data-bo-theme='ubuntu'] .shell-sidebar {
+    border-bottom-color: #6366f1;
+  }
+}

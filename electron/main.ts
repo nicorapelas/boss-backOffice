@@ -41,6 +41,15 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 registerAuthIpc()
 
+ipcMain.handle('app:quit', () => {
+  app.quit()
+})
+
+ipcMain.handle('app:minimize', (event) => {
+  const w = BrowserWindow.fromWebContents(event.sender)
+  if (w && !w.isDestroyed()) w.minimize()
+})
+
 async function detectUsbTransport(): Promise<{
   transport?: LabelPrinterTransport
   candidates: string[]
@@ -249,12 +258,36 @@ ipcMain.handle('bo:label:detect-transport', async () => {
 
 let win: BrowserWindow | null
 
+/** Native title bar hidden; keep standard controls where Electron supports them. */
+function browserShellWindowOptions(): Partial<Electron.BrowserWindowConstructorOptions> {
+  const opts: Partial<Electron.BrowserWindowConstructorOptions> = {
+    frame: false,
+  }
+  if (process.platform === 'darwin') {
+    opts.titleBarStyle = 'hidden'
+    opts.trafficLightPosition = { x: 14, y: 14 }
+  } else if (process.platform === 'win32') {
+    opts.titleBarOverlay = {
+      color: '#161616',
+      symbolColor: '#ececec',
+      height: 40,
+    }
+  }
+  return opts
+}
+
 function createWindow() {
   win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 900,
+    minHeight: 560,
+    fullscreen: true,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
+    ...browserShellWindowOptions(),
   })
 
   win.webContents.on('did-finish-load', () => {

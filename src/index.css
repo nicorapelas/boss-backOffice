@@ -20,15 +20,22 @@ a:hover {
   color: #aeb8ff;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #root {
   width: 100%;
+  max-width: 100%;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 h1,
@@ -45,9 +52,54 @@ h2 {
   font-size: 1.2rem;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #f0f2f5;
-  }
+html[data-bo-theme='light'] {
+  color: #213547;
+  background-color: #f0f2f5;
+}
+
+html[data-bo-theme='light'] a {
+  color: #1d4ed8;
+}
+
+html[data-bo-theme='light'] a:hover {
+  color: #1e3a8a;
+}
+
+html[data-bo-theme='ubuntu'] {
+  color: #f5f3ff;
+  background-color: #1e1b4b;
+}
+
+html[data-bo-theme='ubuntu'] a {
+  color: #7dd3fc;
+}
+
+html[data-bo-theme='ubuntu'] a:hover {
+  color: #bae6fd;
+}
+
+html[data-bo-theme='elon'] {
+  color: #e2e8f0;
+  background-color: #0a1628;
+}
+
+html[data-bo-theme='elon'] a {
+  color: #93c5fd;
+}
+
+html[data-bo-theme='elon'] a:hover {
+  color: #bfdbfe;
+}
+
+html[data-bo-theme='lego'] {
+  color: #f8fafc;
+  background-color: #0c1929;
+}
+
+html[data-bo-theme='lego'] a {
+  color: #ffd502;
+}
+
+html[data-bo-theme='lego'] a:hover {
+  color: #fff9c4;
 }

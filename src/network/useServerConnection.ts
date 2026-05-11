@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   getServerHealthUrl,
   markServerReachable,
@@ -9,6 +9,7 @@ import {
 export function useServerConnection() {
   const [reachable, setReachable] = useState(true)
   const [showRecovered, setShowRecovered] = useState(false)
+  const prevReachableRef = useRef<boolean | null>(null)
 
   useEffect(() => subscribeServerReachability(setReachable), [])
 
@@ -49,7 +50,18 @@ export function useServerConnection() {
   }, [reachable])
 
   useEffect(() => {
-    if (!reachable) return
+    const prev = prevReachableRef.current
+    prevReachableRef.current = reachable
+
+    if (!reachable) {
+      setShowRecovered(false)
+      return
+    }
+
+    // Only show after a real offline→online transition, not on every mount while already connected
+    // (BackOffice mounts BoShell per route, so reachable stays true across navigations).
+    if (prev !== false) return
+
     setShowRecovered(true)
     const timer = window.setTimeout(() => setShowRecovered(false), 2500)
     return () => window.clearTimeout(timer)

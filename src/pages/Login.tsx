@@ -2,8 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { registerRequest } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
+import { IconCloseWindow, IconMinimize } from '../icons/windowChrome'
+import { resolveBoLogoSrc } from '../theme/boLogo'
+import { useBoTheme } from '../theme/BoThemeContext'
 
 export function Login() {
+  const { theme } = useBoTheme()
+  const logoMark = resolveBoLogoSrc(theme)
   const { session, loading, login } = useAuth()
   const navigate = useNavigate()
   const [mode, setMode] = useState<'login' | 'register'>('login')
@@ -40,7 +45,32 @@ export function Login() {
 
   return (
     <div className="screen auth-screen">
+      {window.electronApp ? (
+        <div className="auth-window-actions" role="toolbar" aria-label="Window">
+          <button
+            type="button"
+            className="btn ghost window-chrome-action"
+            aria-label="Minimize window"
+            title="Minimize"
+            onClick={() => void window.electronApp?.minimize()}
+          >
+            <IconMinimize className="window-chrome-action-icon" />
+          </button>
+          <button
+            type="button"
+            className="btn ghost window-chrome-action"
+            aria-label="Exit application"
+            title="Exit app"
+            onClick={() => void window.electronApp?.quit()}
+          >
+            <IconCloseWindow className="window-chrome-action-icon" />
+          </button>
+        </div>
+      ) : null}
       <div className="panel">
+        <div className="auth-brand-logo-wrap">
+          <img src={logoMark} alt="CogniPOS" className="auth-brand-logo" decoding="async" />
+        </div>
         <h1>{mode === 'register' ? 'Create account' : 'Back office'}</h1>
         <p className="muted">
           {mode === 'register' ? (

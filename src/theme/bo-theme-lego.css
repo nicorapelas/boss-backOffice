@@ -1,0 +1,176 @@
+/* Bricks — toy-brick inspired primaries on a deep blue base (pairs with POS Bricks theme). */
+
+html[data-bo-theme='lego'] .shell-sidebar {
+  border-right: 5px solid #ffd502;
+  background: linear-gradient(180deg, #8f0a0c 0%, #d01012 40%, #121c2e 100%);
+}
+
+html[data-bo-theme='lego'] .shell-sidebar-brand {
+  border-bottom: 4px solid #0a0a0a;
+}
+
+html[data-bo-theme='lego'] .shell-sub {
+  color: #ffd502;
+  font-weight: 600;
+}
+
+html[data-bo-theme='lego'] .shell-nav-link {
+  color: #fffef7;
+  border-width: 2px;
+}
+
+html[data-bo-theme='lego'] .shell-nav-link:hover {
+  color: #0a0a0a;
+  background: #ffd502;
+  border-color: #0a0a0a;
+}
+
+html[data-bo-theme='lego'] .shell-nav-link--active {
+  color: #fff;
+  background: #005eb8;
+  border-color: #003d82;
+}
+
+html[data-bo-theme='lego'] .shell-sidebar-footer {
+  border-top: 4px solid #ffd502;
+}
+
+html[data-bo-theme='lego'] .shell-user {
+  color: #fff9e6;
+}
+
+html[data-bo-theme='lego'] .shell-content {
+  background: linear-gradient(165deg, #003057 0%, #0c1929 45%, #050810 100%);
+}
+
+html[data-bo-theme='lego'] .shell-window-actions {
+  border-bottom: 3px solid #ffd502;
+}
+
+html[data-bo-theme='lego'] .shell-main {
+  color: #f1f5f9;
+}
+
+html[data-bo-theme='lego'] .muted {
+  color: #94a3b8;
+}
+
+html[data-bo-theme='lego'] .panel {
+  background: #121c2e;
+  border: 3px solid #ffd502;
+  box-shadow: 4px 4px 0 #0a0a0a;
+}
+
+html[data-bo-theme='lego'] .form input,
+html[data-bo-theme='lego'] .search,
+html[data-bo-theme='lego'] select,
+html[data-bo-theme='lego'] .inline-form input,
+html[data-bo-theme='lego'] .products-search-field input,
+html[data-bo-theme='lego'] .cleanup-input,
+html[data-bo-theme='lego'] .inline-password input,
+html[data-bo-theme='lego'] .role-editor-display-name input {
+  border: 3px solid #005eb8;
+  background: #0a1628;
+  color: #f8fafc;
+}
+
+html[data-bo-theme='lego'] .btn {
+  border: 3px solid #0a0a0a;
+  background: #005eb8;
+  color: #fff;
+  font-weight: 600;
+}
+
+html[data-bo-theme='lego'] .btn.primary {
+  background: linear-gradient(180deg, #ffd502 0%, #e6bc00 100%);
+  border-color: #0a0a0a;
+  color: #0a0a0a;
+}
+
+html[data-bo-theme='lego'] .btn.danger {
+  background: #d01012;
+  border-color: #0a0a0a;
+  color: #fff;
+}
+
+html[data-bo-theme='lego'] .btn.ghost {
+  background: transparent;
+  border: 2px solid #ffd502;
+  color: #ffd502;
+}
+
+html[data-bo-theme='lego'] .product-row {
+  border: 3px solid #005eb8;
+  background: #1a2744;
+}
+
+html[data-bo-theme='lego'] .table th,
+html[data-bo-theme='lego'] .table td {
+  border-bottom-color: #475569;
+}
+
+html[data-bo-theme='lego'] .modal-backdrop {
+  background: rgba(5, 8, 16, 0.75);
+}
+
+html[data-bo-theme='lego'] .product-edit-presets {
+  border-top-color: #ffd502;
+}
+
+html[data-bo-theme='lego'] .product-edit-preset-row {
+  border-bottom-color: #334155;
+}
+
+html[data-bo-theme='lego'] .products-label-settings {
+  border: 2px dashed #005eb8;
+}
+
+html[data-bo-theme='lego'] .user-card {
+  border: 3px solid #005eb8;
+  background: #121c2e;
+}
+
+html[data-bo-theme='lego'] .user-card-block {
+  border: 2px solid #475569;
+  background: #0f172a;
+}
+
+html[data-bo-theme='lego'] .audit-kpi {
+  border: 3px solid #ffd502;
+  background: #121c2e;
+}
+
+html[data-bo-theme='lego'] .role-perm-fieldset,
+html[data-bo-theme='lego'] .role-card {
+  border: 3px solid #005eb8;
+  background: #121c2e;
+}
+
+html[data-bo-theme='lego'] .bo-settings-section {
+  border: 3px solid #005eb8;
+  background: #121c2e;
+  box-shadow: 4px 4px 0 #0a0a0a;
+}
+
+html[data-bo-theme='lego'] .bo-theme-option {
+  border: 3px solid #475569;
+  background: #1a2744;
+  color: #f1f5f9;
+}
+
+html[data-bo-theme='lego'] .bo-theme-option:hover {
+  border-color: #ffd502;
+}
+
+html[data-bo-theme='lego'] .bo-theme-option--selected {
+  border-color: #d01012;
+  box-shadow: 0 0 0 2px rgba(255, 213, 2, 0.55);
+  background: #0f172a;
+  color: #ffd502;
+}
+
+@media (max-width: 768px) {
+  html[data-bo-theme='lego'] .shell-sidebar {
+    border-bottom: 5px solid #ffd502;
+  }
+}

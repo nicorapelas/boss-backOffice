@@ -1,0 +1,171 @@
+/* Elon — Old Glory blue & red accents (aligned with POS Elon theme). */
+
+html[data-bo-theme='elon'] .shell-sidebar {
+  border-right-color: #3c3b6e;
+  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 45%, #0f172a 100%);
+  border-right-width: 2px;
+}
+
+html[data-bo-theme='elon'] .shell-sidebar-brand {
+  border-bottom: 2px solid #b22234;
+}
+
+html[data-bo-theme='elon'] .shell-sub {
+  color: #93c5fd;
+}
+
+html[data-bo-theme='elon'] .shell-nav-link {
+  color: #e2e8f0;
+}
+
+html[data-bo-theme='elon'] .shell-nav-link:hover {
+  color: #f8fafc;
+  background: rgba(59, 130, 246, 0.18);
+}
+
+html[data-bo-theme='elon'] .shell-nav-link--active {
+  color: #f8fafc;
+  background: rgba(30, 58, 138, 0.65);
+  border-color: #b22234;
+}
+
+html[data-bo-theme='elon'] .shell-sidebar-footer {
+  border-top: 2px solid #3c3b6e;
+}
+
+html[data-bo-theme='elon'] .shell-user {
+  color: #cbd5e1;
+}
+
+html[data-bo-theme='elon'] .shell-content {
+  background: linear-gradient(
+    165deg,
+    #0a1628 0%,
+    #1a237e 28%,
+    #0d1b2a 55%,
+    #1b0a0f 85%,
+    #0a1628 100%
+  );
+}
+
+html[data-bo-theme='elon'] .shell-window-actions {
+  border-bottom: 2px solid rgba(178, 34, 52, 0.55);
+}
+
+html[data-bo-theme='elon'] .shell-main {
+  color: #e2e8f0;
+}
+
+html[data-bo-theme='elon'] .muted {
+  color: #94a3b8;
+}
+
+html[data-bo-theme='elon'] .panel {
+  background: #0f172a;
+  border: 2px solid #3c3b6e;
+  box-shadow: 0 0 0 1px rgba(178, 34, 52, 0.22);
+}
+
+html[data-bo-theme='elon'] .form input,
+html[data-bo-theme='elon'] .search,
+html[data-bo-theme='elon'] select,
+html[data-bo-theme='elon'] .inline-form input,
+html[data-bo-theme='elon'] .products-search-field input,
+html[data-bo-theme='elon'] .cleanup-input,
+html[data-bo-theme='elon'] .inline-password input,
+html[data-bo-theme='elon'] .role-editor-display-name input {
+  border-color: #3b82f6;
+  background: #020617;
+  color: #f1f5f9;
+}
+
+html[data-bo-theme='elon'] .btn {
+  border-color: #475569;
+  background: #172554;
+  color: #f1f5f9;
+}
+
+html[data-bo-theme='elon'] .btn.primary {
+  background: #1d4ed8;
+  border-color: #1e40af;
+  color: #fff;
+}
+
+html[data-bo-theme='elon'] .btn.ghost {
+  background: transparent;
+  border-color: rgba(248, 250, 252, 0.35);
+}
+
+html[data-bo-theme='elon'] .product-row {
+  border-color: #2563eb;
+  background: #172554;
+}
+
+html[data-bo-theme='elon'] .table th,
+html[data-bo-theme='elon'] .table td {
+  border-bottom-color: #475569;
+}
+
+html[data-bo-theme='elon'] .modal-backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+
+html[data-bo-theme='elon'] .product-edit-presets {
+  border-top-color: #3c3b6e;
+}
+
+html[data-bo-theme='elon'] .product-edit-preset-row {
+  border-bottom-color: #334155;
+}
+
+html[data-bo-theme='elon'] .products-label-settings {
+  border-color: rgba(60, 59, 110, 0.85);
+}
+
+html[data-bo-theme='elon'] .user-card {
+  border-color: #2563eb;
+  background: #0f172a;
+}
+
+html[data-bo-theme='elon'] .user-card-block {
+  border-color: #334155;
+  background: #020617;
+}
+
+html[data-bo-theme='elon'] .audit-kpi {
+  border-color: #475569;
+  background: #0f172a;
+}
+
+html[data-bo-theme='elon'] .role-perm-fieldset,
+html[data-bo-theme='elon'] .role-card {
+  border-color: #475569;
+  background: #0f172a;
+}
+
+html[data-bo-theme='elon'] .bo-settings-section {
+  border-color: #3c3b6e;
+  background: #0f172a;
+  box-shadow: 0 0 0 1px rgba(178, 34, 52, 0.18);
+}
+
+html[data-bo-theme='elon'] .bo-theme-option {
+  border-color: #334155;
+  background: #020617;
+}
+
+html[data-bo-theme='elon'] .bo-theme-option:hover {
+  border-color: #b22234;
+}
+
+html[data-bo-theme='elon'] .bo-theme-option--selected {
+  border-color: #b22234;
+  box-shadow: 0 0 0 1px rgba(178, 34, 52, 0.45);
+  background: #172554;
+}
+
+@media (max-width: 768px) {
+  html[data-bo-theme='elon'] .shell-sidebar {
+    border-bottom-color: #b22234;
+  }
+}
