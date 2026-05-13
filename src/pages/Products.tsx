@@ -108,6 +108,7 @@ export function Products() {
   const [createVolumeTiering, setCreateVolumeTiering] = useState(false)
   const [createTierRows, setCreateTierRows] = useState<VolumeTierDraft[]>(() => [newTierDraftRow()])
   const [createSupplierId, setCreateSupplierId] = useState('')
+  const [createJobCardLabour, setCreateJobCardLabour] = useState('')
 
   const [editing, setEditing] = useState<Product | null>(null)
   const [editName, setEditName] = useState('')
@@ -120,6 +121,7 @@ export function Products() {
   const [editVolumeTiering, setEditVolumeTiering] = useState(false)
   const [editTierRows, setEditTierRows] = useState<VolumeTierDraft[]>(() => [newTierDraftRow()])
   const [editSupplierId, setEditSupplierId] = useState('')
+  const [editJobCardLabour, setEditJobCardLabour] = useState('')
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
 
@@ -355,6 +357,8 @@ export function Products() {
     setEditVolumeTiering(Boolean(p.volumeTieringEnabled && p.volumeTiers?.length))
     setEditTierRows(productToTierDrafts(p))
     setEditSupplierId('')
+    const jl = p.jobCardLabourPerUnit
+    setEditJobCardLabour(jl != null && jl > 0.0001 ? String(jl) : '')
     if (canSuppliersRead) {
       void apiFetch<SupplierOffer[]>(`/suppliers/offers/by-product?${new URLSearchParams({ productId: p._id })}`)
         .then((rows) => {
@@ -377,6 +381,7 @@ export function Products() {
     setCreateVolumeTiering(false)
     setCreateTierRows([newTierDraftRow()])
     setCreateSupplierId('')
+    setCreateJobCardLabour('')
   }
 
   async function syncPreferredSupplier(productId: string, supplierId: string) {
@@ -431,6 +436,9 @@ export function Products() {
           trackInventory: createTrackInventory,
           volumeTieringEnabled: createVolumeTiering,
           volumeTiers: createVolumeTiering ? draftsToVolumePayload(createTierRows) : [],
+          ...(createJobCardLabour.trim() !== ''
+            ? { jobCardLabourPerUnit: Number(createJobCardLabour) }
+            : {}),
         }),
       })
       if (canSuppliersRead && canSuppliersWrite) {
@@ -469,6 +477,7 @@ export function Products() {
           trackInventory: editTrackInventory,
           volumeTieringEnabled: editVolumeTiering,
           volumeTiers: editVolumeTiering ? draftsToVolumePayload(editTierRows) : [],
+          jobCardLabourPerUnit: editJobCardLabour.trim() === '' ? 0 : Number(editJobCardLabour),
         }),
       })
       if (canSuppliersRead && canSuppliersWrite) {
@@ -762,6 +771,20 @@ export function Products() {
                 required
                 disabled={!createTrackInventory}
               />
+            </label>
+            <label>
+              Job card labour (per unit)
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={createJobCardLabour}
+                onChange={(e) => setCreateJobCardLabour(e.target.value)}
+                placeholder="0"
+              />
+              <span className="muted help-note">
+                VAT-inclusive labour per catalog unit when the item is sold on a POS job card only.
+              </span>
             </label>
           </div>
           <label className="checkbox-row">
@@ -1098,6 +1121,7 @@ export function Products() {
             </div>
           </section>
         ) : null}
+        <div className="bo-table-responsive">
         <table className="table products-table">
           <thead>
             <tr>
@@ -1147,6 +1171,7 @@ export function Products() {
             ))}
           </tbody>
         </table>
+        </div>
         {products.length === 0 && <p className="muted">No products yet.</p>}
         {products.length > 0 && filteredProducts.length === 0 && (
           <p className="muted">No products match your search.</p>
@@ -1303,6 +1328,20 @@ export function Products() {
                     required
                     disabled={!editTrackInventory}
                   />
+                </label>
+                <label>
+                  Job card labour (per unit)
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={editJobCardLabour}
+                    onChange={(e) => setEditJobCardLabour(e.target.value)}
+                    placeholder="0"
+                  />
+                  <span className="muted help-note">
+                    VAT-inclusive labour per catalog unit on POS job cards only. Clear to remove.
+                  </span>
                 </label>
               </div>
               <label className="checkbox-row">

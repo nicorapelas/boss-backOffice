@@ -28,6 +28,8 @@ export interface Product {
   /** Progressive volume pricing (ordinal 1 = first of this line’s quantity). */
   volumeTieringEnabled?: boolean
   volumeTiers?: Array<{ minQty: number; maxQty: number | null; unitPrice: number }>
+  /** VAT-inclusive labour per catalog unit on job-card sales (POS). */
+  jobCardLabourPerUnit?: number
 }
 
 export interface Supplier {

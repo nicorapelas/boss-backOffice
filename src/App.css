@@ -293,10 +293,11 @@ html[data-bo-theme='light'] .shell-main-title {
 .shell-main-scroll {
   flex: 1;
   min-height: 0;
-  overflow-x: hidden;
+  min-width: 0;
+  overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 1rem 1.25rem 1rem 0.75rem;
+  padding: 1rem 1.5rem;
   box-sizing: border-box;
 }
 
@@ -373,7 +374,7 @@ html[data-bo-theme='light'] .shell-main-title {
   }
 
   .shell-main-scroll {
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: visible;
     flex: none;
   }
@@ -426,6 +427,9 @@ html[data-bo-theme='light'] .shell-main-title {
   border-radius: 8px;
   padding: 1.25rem;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 html[data-bo-theme='light'] .panel {
@@ -730,6 +734,7 @@ html[data-bo-theme='light'] .product-edit-preset-row {
   gap: 0.5rem;
   align-items: end;
   margin-bottom: 0.75rem;
+  min-width: 0;
 }
 
 .inline-form label {
@@ -737,6 +742,15 @@ html[data-bo-theme='light'] .product-edit-preset-row {
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
+  min-width: 0;
+}
+
+.inline-form input,
+.inline-form select {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .inline-form input {
@@ -748,7 +762,8 @@ html[data-bo-theme='light'] .product-edit-preset-row {
   font: inherit;
 }
 
-html[data-bo-theme='light'] .inline-form input {
+html[data-bo-theme='light'] .inline-form input,
+html[data-bo-theme='light'] .inline-form select {
     border-color: #ccc;
     background: #fff;
   }
@@ -859,6 +874,18 @@ html[data-bo-theme='light'] .products-label-settings {
 
 .products-table td {
   vertical-align: middle;
+}
+
+.bo-table-responsive {
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0.75rem;
+}
+
+.bo-table-responsive .products-table {
+  width: max-content;
+  min-width: 100%;
 }
 
 .cleanup-section {
