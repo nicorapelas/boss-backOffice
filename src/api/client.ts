@@ -111,6 +111,75 @@ export async function apiFetch<T>(
   return data as T
 }
 
+function apiBaseOrThrow(): string {
+  const b = base()
+  if (!b) throw new Error('Set VITE_API_BASE_URL (e.g. http://localhost:4000/api)')
+  return b
+}
+
+/** Multipart upload — form field name must be `photo`. */
+export async function uploadProductPhoto(
+  productId: string,
+  file: File,
+): Promise<{ photoRevision: number; hasPhoto: boolean }> {
+  const url = `${apiBaseOrThrow()}/products/${encodeURIComponent(productId)}/photo`
+  const tryPost = async (token: string | null) => {
+    const fd = new FormData()
+    fd.append('photo', file)
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    return fetch(url, { method: 'POST', headers, body: fd })
+  }
+  let res = await tryPost(getAccessToken())
+  let text = await res.text()
+  let data = text ? (JSON.parse(text) as unknown) : null
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) {
+      res = await tryPost(getAccessToken())
+      text = await res.text()
+      data = text ? (JSON.parse(text) as unknown) : null
+    }
+  }
+  if (!res.ok) {
+    const err = data as ApiErrorBody | null
+    throw new Error(err?.message ?? err?.error ?? res.statusText)
+  }
+  return data as { photoRevision: number; hasPhoto: boolean }
+}
+
+export async function deleteProductPhoto(productId: string): Promise<void> {
+  await apiFetch(`/products/${encodeURIComponent(productId)}/photo`, { method: 'DELETE' })
+}
+
+/** Caller must `URL.revokeObjectURL` when done. */
+export async function fetchProductPhotoObjectUrl(productId: string, revision: number): Promise<string> {
+  const u = `${apiBaseOrThrow()}/products/${encodeURIComponent(productId)}/photo?rev=${encodeURIComponent(String(revision))}`
+  const tryGet = async (token: string | null) => {
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    return fetch(u, { headers })
+  }
+  let res = await tryGet(getAccessToken())
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) res = await tryGet(getAccessToken())
+  }
+  if (!res.ok) {
+    const text = await res.text()
+    let msg = res.statusText
+    try {
+      const j = text ? (JSON.parse(text) as ApiErrorBody) : null
+      msg = j?.message ?? j?.error ?? msg
+    } catch {
+      // ignore
+    }
+    throw new Error(msg)
+  }
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
+}
+
 export async function registerRequest(email: string, password: string) {
   return apiFetch<{ id: string; email: string; role: string }>('/auth/register', {
     method: 'POST',

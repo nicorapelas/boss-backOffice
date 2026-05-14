@@ -30,6 +30,10 @@ export interface Product {
   volumeTiers?: Array<{ minQty: number; maxQty: number | null; unitPrice: number }>
   /** VAT-inclusive labour per catalog unit on job-card sales (POS). */
   jobCardLabourPerUnit?: number
+  /** 0 = no catalog photo; increments when photo replaced (POS cache-bust). */
+  photoRevision?: number
+  /** Derived on list API when `photoRevision > 0`. */
+  hasPhoto?: boolean
 }
 
 export interface Supplier {

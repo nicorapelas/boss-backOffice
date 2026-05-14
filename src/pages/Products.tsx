@@ -3,10 +3,11 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from 'react'
-import { apiFetch } from '../api/client'
+import { apiFetch, deleteProductPhoto, fetchProductPhotoObjectUrl, uploadProductPhoto } from '../api/client'
 import type { Product, ProductPresetsState, Supplier, SupplierOffer } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
@@ -109,6 +110,8 @@ export function Products() {
   const [createTierRows, setCreateTierRows] = useState<VolumeTierDraft[]>(() => [newTierDraftRow()])
   const [createSupplierId, setCreateSupplierId] = useState('')
   const [createJobCardLabour, setCreateJobCardLabour] = useState('')
+  const [createPhotoFile, setCreatePhotoFile] = useState<File | null>(null)
+  const createPhotoInputRef = useRef<HTMLInputElement | null>(null)
 
   const [editing, setEditing] = useState<Product | null>(null)
   const [editName, setEditName] = useState('')
@@ -122,6 +125,8 @@ export function Products() {
   const [editTierRows, setEditTierRows] = useState<VolumeTierDraft[]>(() => [newTierDraftRow()])
   const [editSupplierId, setEditSupplierId] = useState('')
   const [editJobCardLabour, setEditJobCardLabour] = useState('')
+  const [editPhotoPreviewUrl, setEditPhotoPreviewUrl] = useState<string | undefined>(undefined)
+  const [photoBusy, setPhotoBusy] = useState(false)
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
 
@@ -210,6 +215,10 @@ export function Products() {
   }, [loadSuppliers])
 
   const closeEditModal = useCallback(() => {
+    setEditPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return undefined
+    })
     setEditing(null)
     setEditName('')
     setEditSku('')
@@ -221,6 +230,7 @@ export function Products() {
     setEditVolumeTiering(false)
     setEditTierRows([newTierDraftRow()])
     setEditSupplierId('')
+    setEditJobCardLabour('')
     setPresetError(null)
     setPresetBusy(false)
     setAddPresetCat('')
@@ -236,6 +246,36 @@ export function Products() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [editing, closeEditModal])
+
+  const editingPhotoId = editing?._id
+  const editingPhotoRev = editing?.photoRevision ?? 0
+  useEffect(() => {
+    if (!editingPhotoId || editingPhotoRev < 1) {
+      setEditPhotoPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev)
+        return undefined
+      })
+      return
+    }
+    let cancelled = false
+    void fetchProductPhotoObjectUrl(editingPhotoId, editingPhotoRev)
+      .then((u) => {
+        if (cancelled) {
+          URL.revokeObjectURL(u)
+          return
+        }
+        setEditPhotoPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return u
+        })
+      })
+      .catch(() => {
+        /* preview optional */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [editingPhotoId, editingPhotoRev])
 
   useEffect(() => {
     if (!canRead || !canPresetsRead) {
@@ -369,6 +409,36 @@ export function Products() {
     }
   }
 
+  async function handleRemoveEditPhoto() {
+    if (!editing) return
+    setError(null)
+    setPhotoBusy(true)
+    try {
+      await deleteProductPhoto(editing._id)
+      setEditing({ ...editing, photoRevision: 0, hasPhoto: false })
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not remove photo')
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
+  async function handleReplaceEditPhoto(file: File | null) {
+    if (!file || !editing) return
+    setError(null)
+    setPhotoBusy(true)
+    try {
+      const r = await uploadProductPhoto(editing._id, file)
+      setEditing({ ...editing, photoRevision: r.photoRevision, hasPhoto: r.hasPhoto })
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not upload photo')
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
   function resetCreateForm() {
     setCreateName('')
     setCreateSku('')
@@ -382,6 +452,8 @@ export function Products() {
     setCreateTierRows([newTierDraftRow()])
     setCreateSupplierId('')
     setCreateJobCardLabour('')
+    setCreatePhotoFile(null)
+    if (createPhotoInputRef.current) createPhotoInputRef.current.value = ''
   }
 
   async function syncPreferredSupplier(productId: string, supplierId: string) {
@@ -449,6 +521,17 @@ export function Products() {
             supplierErr instanceof Error
               ? `Product created, but supplier link failed: ${supplierErr.message}`
               : 'Product created, but supplier link failed',
+          )
+        }
+      }
+      if (createPhotoFile) {
+        try {
+          await uploadProductPhoto(created._id, createPhotoFile)
+        } catch (photoErr) {
+          setError(
+            photoErr instanceof Error
+              ? `Product created, but photo upload failed: ${photoErr.message}`
+              : 'Product created, but photo upload failed',
           )
         }
       }
@@ -786,6 +869,27 @@ export function Products() {
                 VAT-inclusive labour per catalog unit when the item is sold on a POS job card only.
               </span>
             </label>
+          </div>
+          <div className="product-photo-row">
+            <label>
+              Product photo (optional)
+              <input
+                ref={createPhotoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => setCreatePhotoFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            {createPhotoFile ? (
+              <p className="muted products-search-meta">
+                Selected: <strong>{createPhotoFile.name}</strong> — uploads after you create the product (1024×1024 WebP on
+                server).
+              </p>
+            ) : (
+              <p className="muted help-note">
+                JPEG, PNG, WebP or GIF (max 12 MB). Stored as letterboxed 1024×1024 WebP for catalog consistency.
+              </p>
+            )}
           </div>
           <label className="checkbox-row">
             <input
@@ -1343,6 +1447,40 @@ export function Products() {
                     VAT-inclusive labour per catalog unit on POS job cards only. Clear to remove.
                   </span>
                 </label>
+              </div>
+              <div className="product-photo-row">
+                <h3 className="product-photo-row-title">Catalog photo</h3>
+                {(editing.photoRevision ?? 0) > 0 && editPhotoPreviewUrl ? (
+                  <img
+                    src={editPhotoPreviewUrl}
+                    alt=""
+                    className="product-photo-preview"
+                  />
+                ) : (
+                  <p className="muted help-note">No photo on file.</p>
+                )}
+                <div className="product-photo-row-actions">
+                  <label className="product-photo-file-label">
+                    Replace image
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      disabled={photoBusy}
+                      onChange={(e) => void handleReplaceEditPhoto(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="btn ghost small"
+                    disabled={photoBusy || (editing.photoRevision ?? 0) < 1}
+                    onClick={() => void handleRemoveEditPhoto()}
+                  >
+                    Remove photo
+                  </button>
+                </div>
+                <p className="muted help-note">
+                  JPEG, PNG, WebP or GIF (max 12 MB). Replaced images are stored as letterboxed 1024×1024 WebP.
+                </p>
               </div>
               <label className="checkbox-row">
                 <input
