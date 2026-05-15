@@ -10,6 +10,7 @@ import { HouseAccountsPage } from './pages/HouseAccounts'
 import { LabelSettingsPage } from './pages/LabelSettings'
 import { Login } from './pages/Login'
 import { MigrationAuditPage } from './pages/MigrationAudit'
+import { CatalogMigrationPage } from './pages/CatalogMigration'
 import { StoreBackupPage } from './pages/StoreBackup'
 import { Products } from './pages/Products'
 import { SuppliersPage } from './pages/Suppliers'
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/audit" element={<MigrationAuditPage />} />
             <Route path="/cleanup" element={<DataCleanupPage />} />
             <Route path="/store-backup" element={<StoreBackupPage />} />
+            <Route path="/catalog-migration" element={<CatalogMigrationPage />} />
             <Route path="/store-settings" element={<StoreSettingsPage />} />
             <Route path="/lay-bys" element={<LayBysPage />} />
             <Route path="/store-voucher" element={<StoreVoucherPage />} />

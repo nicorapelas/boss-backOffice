@@ -304,3 +304,62 @@ export async function restoreStoreBackup(file: File, confirm: string) {
     import('./types').StoreRestoreResponse
   >
 }
+
+async function uploadMigrationZip(
+  file: File,
+  path: string,
+  fieldName: string,
+  extraFields?: Record<string, string>,
+): Promise<unknown> {
+  const url = `${apiBaseOrThrow()}${path}`
+  const post = async (token: string | null) => {
+    const fd = new FormData()
+    fd.append(fieldName, file)
+    if (extraFields) {
+      for (const [k, v] of Object.entries(extraFields)) fd.append(k, v)
+    }
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    return fetch(url, { method: 'POST', headers, body: fd })
+  }
+  let res = await post(getAccessToken())
+  let text = await res.text()
+  let data = text ? (JSON.parse(text) as unknown) : null
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) {
+      res = await post(getAccessToken())
+      text = await res.text()
+      data = text ? (JSON.parse(text) as unknown) : null
+    }
+  }
+  if (!res.ok) {
+    const err = data as ApiErrorBody | null
+    throw new Error(err?.message ?? err?.error ?? res.statusText)
+  }
+  return data
+}
+
+export async function previewVectorImport(file: File) {
+  const data = (await uploadMigrationZip(file, '/migration/vector-import/preview', 'vectorZip')) as
+    import('./types').VectorImportPreviewResponse
+  return data.import
+}
+
+export async function runVectorImport(
+  file: File,
+  options: { confirm: string; replaceCatalog: boolean; normalizeSku: boolean },
+) {
+  return uploadMigrationZip(file, '/migration/vector-import', 'vectorZip', {
+    confirm: options.confirm,
+    replaceCatalog: options.replaceCatalog ? 'true' : 'false',
+    normalizeSku: options.normalizeSku ? 'true' : 'false',
+  }) as Promise<import('./types').VectorImportRunResponse>
+}
+
+export async function deleteEntireCatalog(confirm: string) {
+  return apiFetch<import('./types').CatalogDeleteResponse>('/migration/catalog/delete', {
+    method: 'POST',
+    body: JSON.stringify({ confirm }),
+  })
+}

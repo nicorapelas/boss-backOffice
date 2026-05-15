@@ -1,15 +1,35 @@
 import { useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { downloadStoreBackup, previewStoreRestore, restoreStoreBackup } from '../api/client'
 import type { StoreBackupManifest, StoreRestoreResponse } from '../api/types'
+import { BusyModal, waitForModalPaint } from '../components/BusyModal'
 import { BoShell } from '../layouts/BoShell'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
+
+type BusyKind = 'backup' | 'preview' | 'restore'
+
+const BUSY_COPY: Record<BusyKind, { title: string; message: string }> = {
+  backup: {
+    title: 'Preparing backup',
+    message: 'Collecting store data and building the ZIP file. This may take a few minutes.',
+  },
+  preview: {
+    title: 'Checking backup',
+    message: 'Reading the ZIP and validating contents. Please wait…',
+  },
+  restore: {
+    title: 'Restoring store',
+    message:
+      'Replacing all store data from the backup. Do not close this window — this can take several minutes for large catalogs.',
+  },
+}
 
 export function StoreBackupPage() {
   const { session } = useAuth()
   const allowed = hasPermission(session?.user, 'migration.access')
   const [includePhotos, setIncludePhotos] = useState(true)
-  const [busy, setBusy] = useState<'backup' | 'preview' | 'restore' | null>(null)
+  const [busy, setBusy] = useState<BusyKind | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -17,63 +37,77 @@ export function StoreBackupPage() {
   const [preview, setPreview] = useState<StoreBackupManifest | null>(null)
   const [restoreResult, setRestoreResult] = useState<StoreRestoreResponse | null>(null)
 
+  async function beginBusy(kind: BusyKind, work: () => Promise<void>) {
+    flushSync(() => setBusy(kind))
+    await waitForModalPaint()
+    try {
+      await work()
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function onDownloadBackup() {
     if (!allowed) return
-    setBusy('backup')
     setError(null)
     setSuccess(null)
     try {
-      await downloadStoreBackup(includePhotos)
-      setSuccess('Backup download started.')
+      await beginBusy('backup', async () => {
+        await downloadStoreBackup(includePhotos)
+        setSuccess('Backup download started.')
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Backup failed')
-    } finally {
-      setBusy(null)
     }
   }
 
   async function onPreview(e: FormEvent) {
     e.preventDefault()
     if (!allowed || !file) return
-    setBusy('preview')
     setError(null)
     setSuccess(null)
     setRestoreResult(null)
     try {
-      const manifest = await previewStoreRestore(file)
-      setPreview(manifest)
-      setSuccess('Backup file is valid. Review counts below before restoring.')
+      await beginBusy('preview', async () => {
+        const manifest = await previewStoreRestore(file)
+        setPreview(manifest)
+        setSuccess('Backup file is valid. Review counts below before restoring.')
+      })
     } catch (err) {
       setPreview(null)
       setError(err instanceof Error ? err.message : 'Preview failed')
-    } finally {
-      setBusy(null)
     }
   }
 
   async function onRestore(e: FormEvent) {
     e.preventDefault()
     if (!allowed || !file) return
-    setBusy('restore')
     setError(null)
     setSuccess(null)
     try {
-      const result = await restoreStoreBackup(file, confirmText)
-      setRestoreResult(result)
-      setPreview(result.manifest)
-      setSuccess(result.message)
-      setConfirmText('')
+      await beginBusy('restore', async () => {
+        const result = await restoreStoreBackup(file, confirmText)
+        setRestoreResult(result)
+        setPreview(result.manifest)
+        setSuccess(result.message)
+        setConfirmText('')
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Restore failed')
-    } finally {
-      setBusy(null)
     }
   }
 
   const totalProducts = preview?.counts.products ?? restoreResult?.manifest.counts.products
+  const busyCopy = busy ? BUSY_COPY[busy] : null
 
   return (
     <BoShell>
+      <BusyModal
+        open={busy !== null}
+        title={busyCopy?.title ?? 'Please wait'}
+        message={busyCopy?.message}
+      />
+
       <h1>Store backup &amp; restore</h1>
       <p className="muted">
         Full disaster-recovery snapshot: products, photos, users, sales, lay-bys, quotes, shifts, and

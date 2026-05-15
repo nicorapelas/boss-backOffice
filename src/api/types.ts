@@ -244,6 +244,45 @@ export interface StoreRestoreResponse {
   inserted: Record<string, number>
 }
 
+export interface VectorImportStats {
+  pluRowsTotal: number
+  considered: number
+  migrated: number
+  skipped: number
+  dryRun: boolean
+}
+
+export interface VectorSkuNormalizeStats {
+  productsTotal: number
+  candidates: number
+  updated: number
+  conflicts: number
+  conflictSamples: Array<{ currentSku: string; targetSku: string; reason: string }>
+  dryRun: boolean
+}
+
+export interface CatalogDeleteStats {
+  productsDeleted: number
+  supplierOffersDeleted: number
+  photosRemoved: number
+  presetEntriesCleared: number
+}
+
+export interface VectorImportPreviewResponse {
+  import: VectorImportStats
+}
+
+export interface VectorImportRunResponse {
+  message: string
+  catalogDelete?: CatalogDeleteStats
+  import: VectorImportStats
+  skuNormalize?: VectorSkuNormalizeStats
+}
+
+export interface CatalogDeleteResponse extends CatalogDeleteStats {
+  message: string
+}
+
 export interface MigrationAudit {
   generatedAt: string
   summary: {
