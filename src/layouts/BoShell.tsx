@@ -125,6 +125,9 @@ export function BoShell({ children }: { children: ReactNode }) {
               <NavLink to="/cleanup" className={navCls}>
                 Data Cleanup
               </NavLink>
+              <NavLink to="/store-backup" className={navCls}>
+                Store backup
+              </NavLink>
             </>
           ) : null}
           {hasPermission(u, 'settings.read') || hasPermission(u, 'settings.write') ? (

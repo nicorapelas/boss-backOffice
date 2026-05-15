@@ -230,6 +230,20 @@ export interface BackOfficeUser {
   }
 }
 
+export interface StoreBackupManifest {
+  formatVersion: number
+  mode: 'full'
+  exportedAt: string
+  includesPhotos: boolean
+  counts: Record<string, number>
+}
+
+export interface StoreRestoreResponse {
+  message: string
+  manifest: StoreBackupManifest
+  inserted: Record<string, number>
+}
+
 export interface MigrationAudit {
   generatedAt: string
   summary: {

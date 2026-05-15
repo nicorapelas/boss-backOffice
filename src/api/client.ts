@@ -204,3 +204,103 @@ export async function refreshRequest(refreshToken: string) {
 export async function logoutRequest() {
   await apiFetch('/auth/logout', { method: 'POST' })
 }
+
+async function authFetchBlob(path: string, init: RequestInit = {}): Promise<Response> {
+  const url = `${apiBaseOrThrow()}${path.startsWith('/') ? path : `/${path}`}`
+  const headers = new Headers(init.headers)
+  const token = getAccessToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  let res = await fetch(url, { ...init, headers })
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) {
+      const headers2 = new Headers(init.headers)
+      const t2 = getAccessToken()
+      if (t2) headers2.set('Authorization', `Bearer ${t2}`)
+      res = await fetch(url, { ...init, headers: headers2 })
+    }
+  }
+  return res
+}
+
+function backupDownloadFilename(res: Response): string {
+  const fromCustom = res.headers.get('X-Backup-Filename')?.trim()
+  if (fromCustom) return fromCustom
+
+  const disp = res.headers.get('Content-Disposition') ?? ''
+  const quoted = /filename="([^"]+)"/i.exec(disp)
+  if (quoted?.[1]) return quoted[1]
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  return `cogniBackup-${stamp}.zip`
+}
+
+export async function downloadStoreBackup(includePhotos: boolean): Promise<void> {
+  const q = includePhotos ? '' : '?includePhotos=false'
+  const res = await authFetchBlob(`/store-backup/backup${q}`)
+  if (!res.ok) {
+    const text = await res.text()
+    let msg = res.statusText
+    try {
+      const j = text ? (JSON.parse(text) as ApiErrorBody) : null
+      msg = j?.message ?? j?.error ?? msg
+    } catch {
+      // ignore
+    }
+    throw new Error(msg)
+  }
+  const blob = await res.blob()
+  const filename = backupDownloadFilename(res)
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+async function uploadStoreBackupZip(
+  file: File,
+  path: string,
+  extraFields?: Record<string, string>,
+): Promise<unknown> {
+  const url = `${apiBaseOrThrow()}${path}`
+  const post = async (token: string | null) => {
+    const fd = new FormData()
+    fd.append('backup', file)
+    if (extraFields) {
+      for (const [k, v] of Object.entries(extraFields)) fd.append(k, v)
+    }
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    return fetch(url, { method: 'POST', headers, body: fd })
+  }
+  let res = await post(getAccessToken())
+  let text = await res.text()
+  let data = text ? (JSON.parse(text) as unknown) : null
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) {
+      res = await post(getAccessToken())
+      text = await res.text()
+      data = text ? (JSON.parse(text) as unknown) : null
+    }
+  }
+  if (!res.ok) {
+    const err = data as ApiErrorBody | null
+    throw new Error(err?.message ?? err?.error ?? res.statusText)
+  }
+  return data
+}
+
+export async function previewStoreRestore(file: File) {
+  const data = (await uploadStoreBackupZip(file, '/store-backup/restore/preview')) as {
+    manifest: import('./types').StoreBackupManifest
+  }
+  return data.manifest
+}
+
+export async function restoreStoreBackup(file: File, confirm: string) {
+  return uploadStoreBackupZip(file, '/store-backup/restore', { confirm }) as Promise<
+    import('./types').StoreRestoreResponse
+  >
+}
