@@ -242,6 +242,7 @@ export interface StoreRestoreResponse {
   message: string
   manifest: StoreBackupManifest
   inserted: Record<string, number>
+  roleRepair?: { fixed: number; unresolved: number }
 }
 
 export interface VectorImportStats {
