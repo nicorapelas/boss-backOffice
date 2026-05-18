@@ -164,69 +164,81 @@ export function UsersPage() {
 
           <section className="panel user-create-panel">
             <h2>Create User</h2>
-            <form className="inline-form user-create-form" onSubmit={(e) => void createUser(e)}>
-              <label>
-                Email
-                <input
-                  type="email"
-                  value={newUser.email}
-                  onChange={(e) => setNewUser((p) => ({ ...p, email: e.target.value }))}
-                  required
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser((p) => ({ ...p, password: e.target.value }))}
-                  minLength={6}
-                  required
-                />
-              </label>
-              <label>
-                Name
-                <input
-                  type="text"
-                  value={newUser.displayName}
-                  onChange={(e) => setNewUser((p) => ({ ...p, displayName: e.target.value }))}
-                />
-              </label>
-              <label>
-                Badge Code
-                <input
-                  type="text"
-                  value={newUser.badgeCode}
-                  onChange={(e) => setNewUser((p) => ({ ...p, badgeCode: e.target.value }))}
-                  placeholder="e.g. STAFF-1007"
-                />
-              </label>
-              <label>
-                Role
-                <select
-                  value={newUser.roleId}
-                  onChange={(e) => setNewUser((p) => ({ ...p, roleId: e.target.value }))}
-                  required
-                >
-                  <option value="">Choose…</option>
-                  {roles.map((r) => (
-                    <option key={r._id} value={r._id}>
-                      {r.name} ({r.slug})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="check-inline">
-                <input
-                  type="checkbox"
-                  checked={newUser.allowOfflineLogin}
-                  onChange={(e) => setNewUser((p) => ({ ...p, allowOfflineLogin: e.target.checked }))}
-                />
-                <span>Allow offline login</span>
-              </label>
-              <button type="submit" className="btn primary" disabled={busy}>
-                Create user
-              </button>
+            <p className="muted user-create-lead">
+              Back-office login and optional POS badge. Role permissions come from the{' '}
+              <Link to="/roles">Roles</Link> page.
+            </p>
+            <form className="user-create-form" onSubmit={(e) => void createUser(e)}>
+              <div className="user-fields-grid">
+                <label className="user-field user-field--half">
+                  Email
+                  <input
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser((p) => ({ ...p, email: e.target.value }))}
+                    required
+                    autoComplete="email"
+                  />
+                </label>
+                <label className="user-field user-field--half">
+                  Password
+                  <input
+                    type="password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser((p) => ({ ...p, password: e.target.value }))}
+                    minLength={6}
+                    required
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label className="user-field user-field--half">
+                  Name
+                  <input
+                    type="text"
+                    value={newUser.displayName}
+                    onChange={(e) => setNewUser((p) => ({ ...p, displayName: e.target.value }))}
+                    autoComplete="name"
+                  />
+                </label>
+                <label className="user-field user-field--half">
+                  Badge code
+                  <input
+                    type="text"
+                    value={newUser.badgeCode}
+                    onChange={(e) => setNewUser((p) => ({ ...p, badgeCode: e.target.value }))}
+                    placeholder="e.g. STAFF-1007"
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="user-field user-field--half">
+                  Role
+                  <select
+                    value={newUser.roleId}
+                    onChange={(e) => setNewUser((p) => ({ ...p, roleId: e.target.value }))}
+                    required
+                  >
+                    <option value="">Choose…</option>
+                    {roles.map((r) => (
+                      <option key={r._id} value={r._id}>
+                        {r.name} ({r.slug})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="user-field user-field--full form-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={newUser.allowOfflineLogin}
+                    onChange={(e) => setNewUser((p) => ({ ...p, allowOfflineLogin: e.target.checked }))}
+                  />
+                  <span>Allow offline login on the till when the server is unreachable</span>
+                </label>
+                <div className="user-field user-field--full user-create-actions">
+                  <button type="submit" className="btn primary" disabled={busy}>
+                    Create user
+                  </button>
+                </div>
+              </div>
             </form>
           </section>
 

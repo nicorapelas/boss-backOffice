@@ -283,7 +283,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 560,
     fullscreen: true,
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.APP_ROOT, 'src/assets/logo-text_bottom1-dark.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },

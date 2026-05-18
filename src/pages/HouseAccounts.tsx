@@ -1,12 +1,206 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { apiFetch } from '../api/client'
 import type { HouseAccountLedgerRow, HouseAccountRow } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
+import {
+  HOUSE_ACCOUNT_PAYMENT_TERM_OPTIONS,
+  paymentTermsLabel,
+  type HouseAccountPaymentTerms,
+} from '../houseAccounts/paymentTerms'
+import { ScanPairingPanel } from '../components/ScanPairingPanel'
 import { BoShell } from '../layouts/BoShell'
 
 function round2(n: number) {
   return Math.round(n * 100) / 100
+}
+
+type AccountFormState = {
+  name: string
+  phone: string
+  contactPerson: string
+  email: string
+  vatNumber: string
+  addressText: string
+  paymentTerms: HouseAccountPaymentTerms
+  notes: string
+  creditLimit: string
+}
+
+function emptyAccountForm(): AccountFormState {
+  return {
+    name: '',
+    phone: '',
+    contactPerson: '',
+    email: '',
+    vatNumber: '',
+    addressText: '',
+    paymentTerms: '',
+    notes: '',
+    creditLimit: '',
+  }
+}
+
+function accountToForm(row: HouseAccountRow): AccountFormState {
+  return {
+    name: row.name,
+    phone: row.phone ?? '',
+    contactPerson: row.contactPerson ?? '',
+    email: row.email ?? '',
+    vatNumber: row.vatNumber ?? '',
+    addressText: (row.addressLines ?? []).join('\n'),
+    paymentTerms: (row.paymentTerms as HouseAccountPaymentTerms) ?? '',
+    notes: row.notes ?? '',
+    creditLimit: row.creditLimit != null ? String(row.creditLimit) : '',
+  }
+}
+
+function parseCreditLimit(raw: string): { ok: true; value: number | null } | { ok: false; message: string } {
+  const limRaw = raw.trim()
+  if (!limRaw) return { ok: true, value: null }
+  const n = Number(limRaw.replace(',', '.'))
+  if (!Number.isFinite(n) || n < 0) {
+    return { ok: false, message: 'Credit limit must be a number ≥ 0' }
+  }
+  return { ok: true, value: round2(n) }
+}
+
+function formToPayload(form: AccountFormState) {
+  const limit = parseCreditLimit(form.creditLimit)
+  if (!limit.ok) return { ok: false as const, message: limit.message }
+  const name = form.name.trim()
+  if (!name) return { ok: false as const, message: 'Name is required' }
+  return {
+    ok: true as const,
+    body: {
+      name,
+      phone: form.phone.trim(),
+      contactPerson: form.contactPerson.trim(),
+      email: form.email.trim(),
+      vatNumber: form.vatNumber.trim(),
+      addressLines: form.addressText.split('\n').map((s) => s.trim()).filter(Boolean),
+      paymentTerms: form.paymentTerms,
+      notes: form.notes.trim(),
+      creditLimit: limit.value,
+    },
+  }
+}
+
+function AccountFieldsGrid({
+  form,
+  setForm,
+  idPrefix,
+}: {
+  form: AccountFormState
+  setForm: React.Dispatch<React.SetStateAction<AccountFormState>>
+  idPrefix: string
+}) {
+  return (
+    <div className="sales-fields-grid">
+      <label className="sales-field sales-field--wide">
+        Account / business name
+        <input
+          id={`${idPrefix}-name`}
+          value={form.name}
+          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+          placeholder="Customer or company"
+          required
+        />
+      </label>
+      <label className="sales-field sales-field--half">
+        Contact person
+        <input
+          id={`${idPrefix}-contact`}
+          value={form.contactPerson}
+          onChange={(e) => setForm((p) => ({ ...p, contactPerson: e.target.value }))}
+          placeholder="Optional"
+          autoComplete="name"
+        />
+      </label>
+      <label className="sales-field sales-field--half">
+        Phone
+        <input
+          id={`${idPrefix}-phone`}
+          value={form.phone}
+          onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+          autoComplete="tel"
+        />
+      </label>
+      <label className="sales-field sales-field--half">
+        Email
+        <input
+          type="email"
+          id={`${idPrefix}-email`}
+          value={form.email}
+          onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+          autoComplete="email"
+        />
+      </label>
+      <label className="sales-field sales-field--half">
+        VAT registration number
+        <input
+          id={`${idPrefix}-vat`}
+          value={form.vatNumber}
+          onChange={(e) => setForm((p) => ({ ...p, vatNumber: e.target.value }))}
+          placeholder="Optional"
+        />
+      </label>
+      <label className="sales-field sales-field--half">
+        Payment terms
+        <select
+          id={`${idPrefix}-terms`}
+          value={form.paymentTerms}
+          onChange={(e) =>
+            setForm((p) => ({ ...p, paymentTerms: e.target.value as HouseAccountPaymentTerms }))
+          }
+        >
+          {HOUSE_ACCOUNT_PAYMENT_TERM_OPTIONS.map((o) => (
+            <option key={o.value || 'unset'} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="sales-field sales-field--quarter">
+        Credit limit
+        <input
+          id={`${idPrefix}-limit`}
+          value={form.creditLimit}
+          onChange={(e) => setForm((p) => ({ ...p, creditLimit: e.target.value }))}
+          placeholder="Blank = none"
+        />
+      </label>
+      <label className="sales-field sales-field--full">
+        Billing / delivery address
+        <textarea
+          id={`${idPrefix}-address`}
+          rows={2}
+          value={form.addressText}
+          onChange={(e) => setForm((p) => ({ ...p, addressText: e.target.value }))}
+          placeholder="One line per row (optional)"
+        />
+      </label>
+      <label className="sales-field sales-field--full">
+        Internal notes
+        <textarea
+          id={`${idPrefix}-notes`}
+          rows={2}
+          value={form.notes}
+          onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+          placeholder="Staff only — e.g. payment habits, who may charge"
+        />
+      </label>
+    </div>
+  )
+}
+
+function DetailCell({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="house-account-detail-cell">
+      <span className="muted house-account-detail-label">{label}</span>
+      <span>{children}</span>
+    </div>
+  )
 }
 
 export function HouseAccountsPage() {
@@ -16,9 +210,9 @@ export function HouseAccountsPage() {
   const [ledgerByAccount, setLedgerByAccount] = useState<Record<string, HouseAccountLedgerRow[]>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [createName, setCreateName] = useState('')
-  const [createPhone, setCreatePhone] = useState('')
-  const [createLimit, setCreateLimit] = useState('')
+  const [createForm, setCreateForm] = useState<AccountFormState>(emptyAccountForm)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<AccountFormState>(emptyAccountForm)
   const [payId, setPayId] = useState<string | null>(null)
   const [payAmount, setPayAmount] = useState('')
   const [payCash, setPayCash] = useState('')
@@ -26,13 +220,14 @@ export function HouseAccountsPage() {
   const [payNote, setPayNote] = useState('')
 
   const totalOwed = useMemo(() => accounts.reduce((s, a) => s + (a.balance ?? 0), 0), [accounts])
+  const editingAccount = editId ? accounts.find((a) => a._id === editId) : null
 
   async function loadAccounts() {
     if (!isAdmin) return
     setBusy(true)
     setError(null)
     try {
-      const list = await apiFetch<HouseAccountRow[]>('/house-accounts?limit=500')
+      const list = await apiFetch<HouseAccountRow[]>('/house-accounts?limit=500&includeClosed=1')
       setAccounts(list)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
@@ -55,39 +250,22 @@ export function HouseAccountsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin])
 
-  async function createAccount(e: React.FormEvent) {
+  async function createAccount(e: FormEvent) {
     e.preventDefault()
     if (!isAdmin) return
-    const name = createName.trim()
-    if (!name) {
-      setError('Name is required')
+    const payload = formToPayload(createForm)
+    if (!payload.ok) {
+      setError(payload.message)
       return
     }
     setBusy(true)
     setError(null)
     try {
-      let creditLimit: number | null = null
-      const limRaw = createLimit.trim()
-      if (limRaw) {
-        const n = Number(limRaw.replace(',', '.'))
-        if (!Number.isFinite(n) || n < 0) {
-          setError('Credit limit must be a number ≥ 0')
-          setBusy(false)
-          return
-        }
-        creditLimit = round2(n)
-      }
       await apiFetch<HouseAccountRow>('/house-accounts', {
         method: 'POST',
-        body: JSON.stringify({
-          name,
-          phone: createPhone.trim(),
-          creditLimit,
-        }),
+        body: JSON.stringify(payload.body),
       })
-      setCreateName('')
-      setCreatePhone('')
-      setCreateLimit('')
+      setCreateForm(emptyAccountForm())
       await loadAccounts()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Create failed')
@@ -96,7 +274,38 @@ export function HouseAccountsPage() {
     }
   }
 
-  async function submitPayment(e: React.FormEvent) {
+  function startEdit(row: HouseAccountRow) {
+    setEditId(row._id)
+    setEditForm(accountToForm(row))
+    setPayId(null)
+    setError(null)
+  }
+
+  async function saveEdit(e: FormEvent) {
+    e.preventDefault()
+    if (!editId || !isAdmin) return
+    const payload = formToPayload(editForm)
+    if (!payload.ok) {
+      setError(payload.message)
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await apiFetch<HouseAccountRow>(`/house-accounts/${editId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload.body),
+      })
+      setEditId(null)
+      await loadAccounts()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Update failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitPayment(e: FormEvent) {
     e.preventDefault()
     if (!payId || !isAdmin) return
     const amount = round2(Number(payAmount.replace(',', '.')) || 0)
@@ -147,6 +356,23 @@ export function HouseAccountsPage() {
         method: 'PATCH',
         body: JSON.stringify({ status: 'closed' }),
       })
+      if (editId === id) setEditId(null)
+      await loadAccounts()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Update failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function reopenAccount(id: string) {
+    setBusy(true)
+    setError(null)
+    try {
+      await apiFetch(`/house-accounts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'active' }),
+      })
       await loadAccounts()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed')
@@ -158,13 +384,17 @@ export function HouseAccountsPage() {
   return (
     <BoShell>
       <h1>House accounts (AR)</h1>
-      <p className="muted">On-account customers: balances owed to the store. Cashiers charge sales on the POS; record payments here or at the till.</p>
+      <p className="muted">
+        On-account customers: balances owed to the store. Cashiers charge sales on the POS; record payments here or at
+        the till.
+      </p>
       {!isAdmin && <p className="error">Permission required: house accounts.</p>}
       {isAdmin && (
         <>
+          <ScanPairingPanel />
           <div className="panel audit-toolbar">
             <span className="muted">
-              Total AR (sum of balances): <strong>{totalOwed.toFixed(2)}</strong>
+              Total AR (active balances): <strong>{totalOwed.toFixed(2)}</strong>
             </span>
             <button type="button" className="btn ghost" disabled={busy} onClick={() => void loadAccounts()}>
               {busy ? 'Loading…' : 'Refresh'}
@@ -172,133 +402,159 @@ export function HouseAccountsPage() {
           </div>
           {error && <p className="error">{error}</p>}
 
-          <h2 className="bo-section-title">New account</h2>
-          <form className="panel" onSubmit={(e) => void createAccount(e)} style={{ marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
-              <label>
-                <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
-                  Name
-                </span>
-                <input
-                  className="input"
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                  placeholder="Customer / business"
-                />
-              </label>
-              <label>
-                <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
-                  Phone (optional)
-                </span>
-                <input
-                  className="input"
-                  value={createPhone}
-                  onChange={(e) => setCreatePhone(e.target.value)}
-                />
-              </label>
-              <label>
-                <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
-                  Credit limit (blank = none)
-                </span>
-                <input
-                  className="input"
-                  value={createLimit}
-                  onChange={(e) => setCreateLimit(e.target.value)}
-                  placeholder="e.g. 5000"
-                />
-              </label>
-              <button type="submit" className="btn primary" disabled={busy}>
-                Create
-              </button>
-            </div>
-          </form>
+          <section className="panel sales-filters-panel">
+            <h2 className="sales-filters-title">New account</h2>
+            <p className="muted label-settings-section-lead">
+              Only the account name is required. Other fields help staff at the till and on statements.
+            </p>
+            <form className="house-account-form" onSubmit={(e) => void createAccount(e)}>
+              <AccountFieldsGrid form={createForm} setForm={setCreateForm} idPrefix="create" />
+              <div className="sales-field sales-field--full sales-filter-actions">
+                <button type="submit" className="btn primary" disabled={busy}>
+                  Create account
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {editId && editingAccount ? (
+            <section className="panel sales-filters-panel">
+              <h2 className="sales-filters-title">
+                Edit {editingAccount.accountNumber}
+              </h2>
+              <form className="house-account-form" onSubmit={(e) => void saveEdit(e)}>
+                <AccountFieldsGrid form={editForm} setForm={setEditForm} idPrefix="edit" />
+                <div className="sales-field sales-field--full sales-filter-actions">
+                  <button type="submit" className="btn primary" disabled={busy}>
+                    Save changes
+                  </button>
+                  <button type="button" className="btn ghost" onClick={() => setEditId(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </section>
+          ) : null}
 
           <h2 className="bo-section-title">Accounts</h2>
           <div className="panel">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Account</th>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Owed</th>
-                  <th>Limit</th>
-                  <th>Status</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map((r) => (
-                  <tr key={r._id}>
-                    <td>{r.accountNumber}</td>
-                    <td>{r.name}</td>
-                    <td>{r.phone || '—'}</td>
-                    <td>{r.balance.toFixed(2)}</td>
-                    <td>{r.creditLimit != null ? r.creditLimit.toFixed(2) : '—'}</td>
-                    <td>{r.status}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        className="btn ghost small"
-                        onClick={() => void loadLedger(r._id)}
-                        disabled={busy}
-                      >
-                        Ledger
-                      </button>{' '}
-                      {r.status === 'active' && r.balance > 0.01 ? (
-                        <button type="button" className="btn small" onClick={() => setPayId(r._id)} disabled={busy}>
-                          Pay
-                        </button>
-                      ) : null}{' '}
-                      {r.status === 'active' ? (
-                        <button type="button" className="btn ghost small" onClick={() => void closeAccount(r._id)} disabled={busy}>
-                          Close
-                        </button>
-                      ) : null}
-                    </td>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Account</th>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Phone</th>
+                    <th>Terms</th>
+                    <th>Owed</th>
+                    <th>Limit</th>
+                    <th>Status</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {accounts.map((r) => (
+                    <tr key={r._id} className={r.status === 'closed' ? 'muted' : undefined}>
+                      <td>{r.accountNumber}</td>
+                      <td>
+                        {r.name}
+                        {r.vatNumber ? (
+                          <span className="muted" style={{ display: 'block', fontSize: '0.8rem' }}>
+                            VAT {r.vatNumber}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td>
+                        {r.contactPerson || '—'}
+                        {r.email ? (
+                          <span className="muted" style={{ display: 'block', fontSize: '0.8rem' }}>
+                            {r.email}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td>{r.phone || '—'}</td>
+                      <td>{paymentTermsLabel(r.paymentTerms)}</td>
+                      <td>{r.balance.toFixed(2)}</td>
+                      <td>{r.creditLimit != null ? r.creditLimit.toFixed(2) : '—'}</td>
+                      <td>{r.status}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className="btn ghost small"
+                          onClick={() => void loadLedger(r._id)}
+                          disabled={busy}
+                        >
+                          Ledger
+                        </button>{' '}
+                        <button type="button" className="btn ghost small" onClick={() => startEdit(r)} disabled={busy}>
+                          Edit
+                        </button>{' '}
+                        {r.status === 'active' && r.balance > 0.01 ? (
+                          <button type="button" className="btn small" onClick={() => setPayId(r._id)} disabled={busy}>
+                            Pay
+                          </button>
+                        ) : null}{' '}
+                        {r.status === 'active' ? (
+                          <button
+                            type="button"
+                            className="btn ghost small"
+                            onClick={() => void closeAccount(r._id)}
+                            disabled={busy}
+                          >
+                            Close
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn ghost small"
+                            onClick={() => void reopenAccount(r._id)}
+                            disabled={busy}
+                          >
+                            Reopen
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {accounts.length === 0 && !busy && <p className="muted">No house accounts yet.</p>}
           </div>
 
           {payId ? (
-            <div className="panel" style={{ marginTop: '1rem' }}>
-              <h3 className="bo-section-title">Record payment</h3>
-              <form onSubmit={(e) => void submitPayment(e)} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
-                <label>
-                  <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
+            <section className="panel sales-filters-panel" style={{ marginTop: '1rem' }}>
+              <h2 className="sales-filters-title">Record payment</h2>
+              <form onSubmit={(e) => void submitPayment(e)}>
+                <div className="sales-fields-grid">
+                  <label className="sales-field sales-field--quarter">
                     Total
-                  </span>
-                  <input className="input" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
-                </label>
-                <label>
-                  <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
+                    <input value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+                  </label>
+                  <label className="sales-field sales-field--quarter">
                     Cash
-                  </span>
-                  <input className="input" value={payCash} onChange={(e) => setPayCash(e.target.value)} />
-                </label>
-                <label>
-                  <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
+                    <input value={payCash} onChange={(e) => setPayCash(e.target.value)} />
+                  </label>
+                  <label className="sales-field sales-field--quarter">
                     Card
-                  </span>
-                  <input className="input" value={payCard} onChange={(e) => setPayCard(e.target.value)} />
-                </label>
-                <label>
-                  <span className="muted" style={{ display: 'block', fontSize: '0.85rem' }}>
+                    <input value={payCard} onChange={(e) => setPayCard(e.target.value)} />
+                  </label>
+                  <label className="sales-field sales-field--quarter">
                     Note
-                  </span>
-                  <input className="input" value={payNote} onChange={(e) => setPayNote(e.target.value)} />
-                </label>
-                <button type="submit" className="btn primary" disabled={busy}>
-                  Apply payment
-                </button>
-                <button type="button" className="btn ghost" onClick={() => setPayId(null)}>
-                  Cancel
-                </button>
+                    <input value={payNote} onChange={(e) => setPayNote(e.target.value)} />
+                  </label>
+                  <div className="sales-field sales-field--full sales-filter-actions">
+                    <button type="submit" className="btn primary" disabled={busy}>
+                      Apply payment
+                    </button>
+                    <button type="button" className="btn ghost" onClick={() => setPayId(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </form>
-            </div>
+            </section>
           ) : null}
 
           {Object.keys(ledgerByAccount).length > 0 ? (
@@ -311,6 +567,28 @@ export function HouseAccountsPage() {
                 return (
                   <div key={aid} className="panel" style={{ marginBottom: '1rem' }}>
                     <h3>{acct?.accountNumber ?? aid}</h3>
+                    {acct ? (
+                      <div className="house-account-detail-grid">
+                        <DetailCell label="Name">{acct.name}</DetailCell>
+                        <DetailCell label="Contact">{acct.contactPerson || '—'}</DetailCell>
+                        <DetailCell label="Phone">{acct.phone || '—'}</DetailCell>
+                        <DetailCell label="Email">{acct.email || '—'}</DetailCell>
+                        <DetailCell label="VAT">{acct.vatNumber || '—'}</DetailCell>
+                        <DetailCell label="Terms">{paymentTermsLabel(acct.paymentTerms)}</DetailCell>
+                        <DetailCell label="Address">
+                          {(acct.addressLines ?? []).length > 0 ? (
+                            <span style={{ whiteSpace: 'pre-line' }}>{(acct.addressLines ?? []).join('\n')}</span>
+                          ) : (
+                            '—'
+                          )}
+                        </DetailCell>
+                        {acct.notes ? (
+                          <DetailCell label="Notes">
+                            <span style={{ whiteSpace: 'pre-wrap' }}>{acct.notes}</span>
+                          </DetailCell>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <table className="table">
                       <thead>
                         <tr>

@@ -772,6 +772,390 @@ html[data-bo-theme='light'] .product-edit-preset-row {
   font-size: 1.1rem;
 }
 
+/* Product create / edit — intentional field rows (not auto-fit cram) */
+.product-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: start;
+  margin-bottom: 0.75rem;
+}
+
+.product-fields-grid label.product-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+
+.product-field--name {
+  grid-column: span 8;
+}
+
+.product-field--sku {
+  grid-column: span 4;
+}
+
+.product-field--half {
+  grid-column: span 6;
+}
+
+.product-field--price {
+  grid-column: span 3;
+}
+
+.product-field--supplier {
+  grid-column: span 6;
+}
+
+.product-field--stock {
+  grid-column: span 3;
+}
+
+.product-field--full {
+  grid-column: 1 / -1;
+}
+
+.product-fields-grid--no-supplier .product-field--price,
+.product-fields-grid--no-supplier .product-field--stock {
+  grid-column: span 6;
+}
+
+.product-fields-grid input,
+.product-fields-grid select {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #111;
+  color: inherit;
+  font: inherit;
+}
+
+html[data-bo-theme='light'] .product-fields-grid input,
+html[data-bo-theme='light'] .product-fields-grid select {
+  border-color: #ccc;
+  background: #fff;
+}
+
+.product-fields-grid .help-note {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 768px) {
+  .product-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-fields-grid [class*='product-field--'] {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Back office — Label settings */
+.label-settings-page {
+  max-width: 52rem;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 0 1.5rem;
+  box-sizing: border-box;
+}
+
+.label-settings-lead {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.label-settings-section {
+  margin-bottom: 1rem;
+}
+
+.label-settings-section h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.label-settings-section-lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+}
+
+.label-settings-footnote {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+}
+
+.label-fields-grid,
+.user-fields-grid,
+.sales-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: start;
+}
+
+.label-fields-grid label.label-field,
+.user-fields-grid label.user-field,
+.sales-fields-grid label.sales-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+
+.label-field--quarter,
+.user-field--quarter,
+.sales-field--quarter {
+  grid-column: span 3;
+}
+
+.label-field--narrow,
+.user-field--narrow,
+.sales-field--narrow {
+  grid-column: span 2;
+}
+
+.label-field--third,
+.user-field--third,
+.sales-field--third {
+  grid-column: span 4;
+}
+
+.label-field--half,
+.user-field--half,
+.sales-field--half {
+  grid-column: span 6;
+}
+
+.label-field--wide,
+.user-field--wide,
+.sales-field--wide {
+  grid-column: span 8;
+}
+
+.label-field--full,
+.user-field--full,
+.sales-field--full {
+  grid-column: 1 / -1;
+}
+
+.label-field--action {
+  justify-content: flex-start;
+}
+
+.label-fields-grid input,
+.label-fields-grid select,
+.user-fields-grid input,
+.user-fields-grid select,
+.sales-fields-grid input,
+.sales-fields-grid select {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #111;
+  color: inherit;
+  font: inherit;
+}
+
+html[data-bo-theme='light'] .label-fields-grid input,
+html[data-bo-theme='light'] .label-fields-grid select,
+html[data-bo-theme='light'] .user-fields-grid input,
+html[data-bo-theme='light'] .user-fields-grid select,
+html[data-bo-theme='light'] .sales-fields-grid input,
+html[data-bo-theme='light'] .sales-fields-grid select {
+  border-color: #ccc;
+  background: #fff;
+}
+
+.label-field-nudge {
+  margin-top: 0.15rem;
+  gap: 0.35rem;
+}
+
+.label-field-actions {
+  margin-top: 0.1rem;
+  flex-wrap: wrap;
+}
+
+.label-fields-grid--dots .label-field--dot {
+  align-self: stretch;
+}
+
+.label-settings-actions {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .label-fields-grid,
+  .user-fields-grid,
+  .sales-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .label-fields-grid [class*='label-field--'],
+  .user-fields-grid [class*='user-field--'],
+  .sales-fields-grid [class*='sales-field--'] {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Back office — Sales & receipts filters */
+.sales-filters-panel {
+  margin-bottom: 1rem;
+}
+
+.sales-filters-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.sales-filter-quick-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+}
+
+.bo-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin: 0;
+}
+
+.bo-filter-check input[type='checkbox'] {
+  flex-shrink: 0;
+}
+
+.sales-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.15rem;
+}
+
+.house-account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.house-account-form .sales-fields-grid textarea {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #111;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+html[data-bo-theme='light'] .house-account-form .sales-fields-grid textarea {
+  border-color: #ccc;
+  background: #fff;
+}
+
+.house-account-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+}
+
+.house-account-detail-label {
+  display: block;
+  font-size: 0.78rem;
+  margin-bottom: 0.1rem;
+}
+
+/* CogniPOS Scan — mobile pairing QR */
+.bo-scan-pairing {
+  margin-bottom: 1rem;
+}
+
+.bo-scan-pairing-warning {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+}
+
+.bo-scan-pairing-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.bo-scan-pairing-qr {
+  flex-shrink: 0;
+  padding: 0.65rem;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #444;
+}
+
+html[data-bo-theme='light'] .bo-scan-pairing-qr {
+  border-color: #ccc;
+}
+
+.bo-scan-pairing-meta {
+  flex: 1;
+  min-width: min(100%, 14rem);
+}
+
+.bo-scan-pairing-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.bo-scan-pairing-url {
+  display: block;
+  word-break: break-all;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  background: #111;
+  border: 1px solid #444;
+  font-size: 0.9rem;
+  margin-bottom: 0.65rem;
+}
+
+html[data-bo-theme='light'] .bo-scan-pairing-url {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.bo-scan-pairing-actions {
+  margin-bottom: 0.5rem;
+}
+
+.bo-scan-pairing-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.bo-scan-pairing-hint code {
+  font-size: 0.8rem;
+}
+
 .product-photo-row {
   margin-bottom: 0.85rem;
   padding: 0.65rem 0.75rem;
@@ -1064,11 +1448,37 @@ html[data-bo-theme='light'] select {
 
 .user-create-panel h2 {
   margin-top: 0;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.user-create-lead {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
 }
 
 .user-create-form {
   margin-bottom: 0;
+}
+
+.user-create-form .form-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-direction: row;
+}
+
+.user-create-form .form-checkbox-row input[type='checkbox'] {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.user-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.15rem;
 }
 
 .users-list {
@@ -1341,6 +1751,121 @@ html[data-bo-theme='light'] .bo-theme-option {
   border-color: #bbb;
   background: #fff;
   color: #213547;
+}
+
+/* Back office — Store settings */
+.store-settings-page {
+  max-width: 52rem;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 0 1.5rem;
+  box-sizing: border-box;
+}
+
+.store-settings-lead {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.store-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.store-settings-form .bo-settings-section {
+  margin: 0;
+}
+
+.store-settings-subheading {
+  margin: 1.25rem 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.store-settings-form .stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.store-settings-form .stack input:not([type='color']),
+.store-settings-form .stack textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #111;
+  color: inherit;
+  font: inherit;
+}
+
+html[data-bo-theme='light'] .store-settings-form .stack input:not([type='color']),
+html[data-bo-theme='light'] .store-settings-form .stack textarea {
+  border-color: #ccc;
+  background: #fff;
+}
+
+.store-settings-form .field-hint {
+  font-size: 0.8rem;
+}
+
+.store-settings-form .form-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.store-settings-form .form-checkbox-row input[type='checkbox'] {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.store-settings-form .color-input {
+  width: 3.25rem;
+  height: 2.5rem;
+  padding: 0.2rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #111;
+  cursor: pointer;
+}
+
+.store-settings-form .form-grid {
+  display: grid;
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+.store-settings-form .form-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.store-settings-form .form-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.store-settings-form .form-grid__full {
+  grid-column: 1 / -1;
+}
+
+.store-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}
+
+@media (max-width: 720px) {
+  .store-settings-form .form-grid--2,
+  .store-settings-form .form-grid--3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 html[data-bo-theme='light'] .bo-theme-option:hover {

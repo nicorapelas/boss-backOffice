@@ -1,3 +1,4 @@
+import { ScanPairingPanel } from '../components/ScanPairingPanel'
 import { BoShell } from '../layouts/BoShell'
 import { useBoTheme } from '../theme/BoThemeContext'
 import type { BoTheme } from '../theme/boTheme'
@@ -18,6 +19,8 @@ export function BoSettingsPage() {
       <h1 className="bo-settings-title">Settings</h1>
       <div className="bo-settings-page">
         <p className="muted">Personal options for this device. Store-wide configuration stays under Store settings.</p>
+
+        <ScanPairingPanel />
 
         <section className="bo-settings-section" aria-labelledby="bo-appearance-heading">
           <h2 id="bo-appearance-heading" className="bo-settings-section-title">

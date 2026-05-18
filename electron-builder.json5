@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.electropos.backoffice",
+  "appId": "com.cognipos.backoffice",
   "asar": true,
   "productName": "CogniPOS Back Office",
   "directories": {
@@ -23,6 +23,8 @@
   },
   "linux": {
     "target": ["AppImage"],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
-  }
+    "artifactName": "${productName}-Linux-${version}.${ext}",
+    "icon": "src/assets/logo-text_bottom1-dark.png"
+  },
+  "icon": "src/assets/logo-text_bottom1-dark.png"
 }

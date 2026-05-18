@@ -769,8 +769,10 @@ export function Products() {
       {canWrite && (
         <form className="panel product-form" onSubmit={onCreate}>
           <h2>New product</h2>
-          <div className="inline-form">
-            <label>
+          <div
+            className={`product-fields-grid${canSuppliersRead ? '' : ' product-fields-grid--no-supplier'}`}
+          >
+            <label className="product-field product-field--name">
               Name
               <input
                 value={createName}
@@ -778,7 +780,7 @@ export function Products() {
                 required
               />
             </label>
-            <label>
+            <label className="product-field product-field--sku">
               SKU
               <input
                 value={createSku}
@@ -789,7 +791,7 @@ export function Products() {
                 required
               />
             </label>
-            <label>
+            <label className="product-field product-field--half">
               Category
               <input
                 value={createCategory}
@@ -799,7 +801,7 @@ export function Products() {
                 list={categorySuggestions.length > 0 ? productCategoryDatalistId : undefined}
               />
             </label>
-            <label>
+            <label className="product-field product-field--half">
               Sub-category
               <input
                 value={createSubCategory}
@@ -815,7 +817,7 @@ export function Products() {
                 }
               />
             </label>
-            <label>
+            <label className="product-field product-field--price">
               Price
               <input
                 type="number"
@@ -827,7 +829,7 @@ export function Products() {
               />
             </label>
             {canSuppliersRead ? (
-              <label>
+              <label className="product-field product-field--supplier">
                 Primary supplier
                 <select
                   value={createSupplierId}
@@ -844,7 +846,9 @@ export function Products() {
                 </select>
               </label>
             ) : null}
-            <label className={createTrackInventory ? undefined : 'muted'}>
+            <label
+              className={`product-field product-field--stock${createTrackInventory ? '' : ' muted'}`}
+            >
               Stock
               <input
                 type="number"
@@ -855,7 +859,7 @@ export function Products() {
                 disabled={!createTrackInventory}
               />
             </label>
-            <label>
+            <label className="product-field product-field--full">
               Job card labour (per unit)
               <input
                 type="number"
@@ -1350,8 +1354,10 @@ export function Products() {
               <p className="muted modal-subtitle">
                 {editing.name} <span className="muted">({editing.sku})</span>
               </p>
-              <div className="inline-form">
-                <label>
+              <div
+                className={`product-fields-grid${canSuppliersRead ? '' : ' product-fields-grid--no-supplier'}`}
+              >
+                <label className="product-field product-field--name">
                   Name
                   <input
                     value={editName}
@@ -1359,7 +1365,7 @@ export function Products() {
                     required
                   />
                 </label>
-                <label>
+                <label className="product-field product-field--sku">
                   SKU
                   <input
                     value={editSku}
@@ -1367,7 +1373,7 @@ export function Products() {
                     required
                   />
                 </label>
-                <label>
+                <label className="product-field product-field--half">
                   Category
                   <input
                     value={editCategory}
@@ -1377,7 +1383,7 @@ export function Products() {
                     list={categorySuggestions.length > 0 ? productCategoryDatalistId : undefined}
                   />
                 </label>
-                <label>
+                <label className="product-field product-field--half">
                   Sub-category
                   <input
                     value={editSubCategory}
@@ -1393,7 +1399,7 @@ export function Products() {
                     }
                   />
                 </label>
-                <label>
+                <label className="product-field product-field--price">
                   Price
                   <input
                     type="number"
@@ -1405,7 +1411,7 @@ export function Products() {
                   />
                 </label>
                 {canSuppliersRead ? (
-                  <label>
+                  <label className="product-field product-field--supplier">
                     Primary supplier
                     <select
                       value={editSupplierId}
@@ -1422,7 +1428,9 @@ export function Products() {
                     </select>
                   </label>
                 ) : null}
-                <label className={editTrackInventory ? undefined : 'muted'}>
+                <label
+                  className={`product-field product-field--stock${editTrackInventory ? '' : ' muted'}`}
+                >
                   Stock
                   <input
                     type="number"
@@ -1433,7 +1441,7 @@ export function Products() {
                     disabled={!editTrackInventory}
                   />
                 </label>
-                <label>
+                <label className="product-field product-field--full">
                   Job card labour (per unit)
                   <input
                     type="number"

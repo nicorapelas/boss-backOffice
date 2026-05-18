@@ -165,138 +165,148 @@ export function SalesReceiptsPage() {
 
       {canRead && (
         <>
-          <form className="panel audit-toolbar" onSubmit={onApply} style={{ flexWrap: 'wrap', gap: '0.75rem' }}>
-            <label className="bo-filter-check">
-              <input
-                type="checkbox"
-                checked={form.allDates}
-                onChange={(e) => setForm((f) => ({ ...f, allDates: e.target.checked }))}
-              />
-              All dates
-            </label>
-            <label className="bo-filter-check">
-              <input
-                type="checkbox"
-                disabled={form.allDates}
-                checked={todayActive}
-                onChange={(e) => {
-                  if (form.allDates) return
-                  if (e.target.checked) {
-                    setForm((f) => ({ ...f, from: todayStr, to: todayStr, allDates: false }))
-                  } else {
-                    setForm((f) => {
-                      if (f.from === todayStr && f.to === todayStr) {
-                        return { ...f, ...defaultTwoWeekRange() }
-                      }
-                      return f
-                    })
-                  }
-                }}
-              />
-              Today
-            </label>
-            <label className="bo-filter-check">
-              <input
-                type="checkbox"
-                disabled={form.allDates}
-                checked={yesterdayActive}
-                onChange={(e) => {
-                  if (form.allDates) return
-                  if (e.target.checked) {
-                    setForm((f) => ({ ...f, from: yesterdayStr, to: yesterdayStr, allDates: false }))
-                  } else {
-                    setForm((f) => {
-                      if (f.from === yesterdayStr && f.to === yesterdayStr) {
-                        return { ...f, ...defaultTwoWeekRange() }
-                      }
-                      return f
-                    })
-                  }
-                }}
-              />
-              Yesterday
-            </label>
-            {!form.allDates ? (
-              <>
-                <label>
-                  From
+          <form className="panel sales-filters-panel" onSubmit={onApply}>
+            <h2 className="sales-filters-title">Search &amp; filters</h2>
+            <div className="sales-fields-grid">
+              <div className="sales-field sales-field--full sales-filter-quick-dates">
+                <label className="bo-filter-check">
                   <input
-                    type="date"
-                    value={form.from}
-                    onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
-                    required={!form.allDates}
+                    type="checkbox"
+                    checked={form.allDates}
+                    onChange={(e) => setForm((f) => ({ ...f, allDates: e.target.checked }))}
                   />
+                  All dates
                 </label>
-                <label>
-                  To
+                <label className="bo-filter-check">
                   <input
-                    type="date"
-                    value={form.to}
-                    onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
-                    required={!form.allDates}
+                    type="checkbox"
+                    disabled={form.allDates}
+                    checked={todayActive}
+                    onChange={(e) => {
+                      if (form.allDates) return
+                      if (e.target.checked) {
+                        setForm((f) => ({ ...f, from: todayStr, to: todayStr, allDates: false }))
+                      } else {
+                        setForm((f) => {
+                          if (f.from === todayStr && f.to === todayStr) {
+                            return { ...f, ...defaultTwoWeekRange() }
+                          }
+                          return f
+                        })
+                      }
+                    }}
                   />
+                  Today
                 </label>
-              </>
-            ) : null}
-            <label>
-              Till
-              <input
-                value={form.tillCode}
-                onChange={(e) => setForm((f) => ({ ...f, tillCode: e.target.value }))}
-                placeholder="T1 / T2 / T3"
-              />
-            </label>
-            <label>
-              Payment
-              <select
-                value={form.paymentMethod}
-                onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-              >
-                {PAYMENT_OPTIONS.map((o) => (
-                  <option key={o.value || 'any'} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Refund
-              <select
-                value={form.refund}
-                onChange={(e) => setForm((f) => ({ ...f, refund: e.target.value as FilterForm['refund'] }))}
-              >
-                <option value="all">All</option>
-                <option value="no">Not refunded</option>
-                <option value="yes">Refunded</option>
-              </select>
-            </label>
-            <label>
-              Stock override
-              <select
-                value={form.stockOverride}
-                onChange={(e) => setForm((f) => ({ ...f, stockOverride: e.target.value as FilterForm['stockOverride'] }))}
-              >
-                <option value="all">All</option>
-                <option value="yes">Override used</option>
-                <option value="no">No override</option>
-              </select>
-            </label>
-            <label style={{ minWidth: '12rem', flex: '1 1 10rem' }}>
-              Search
-              <input
-                type="search"
-                value={form.q}
-                onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
-                placeholder="Sale id, id prefix, legacy receipt #, line name…"
-                title="24-char id = exact match; hex prefix = id starts with; 3+ digits = legacy receipt number; else line item name contains"
-              />
-            </label>
-            <button type="submit" className="btn primary" disabled={busy}>
-              {busy ? 'Loading…' : 'Apply'}
-            </button>
-            <button type="button" className="btn ghost" disabled={busy} onClick={() => void load()}>
-              Refresh
-            </button>
+                <label className="bo-filter-check">
+                  <input
+                    type="checkbox"
+                    disabled={form.allDates}
+                    checked={yesterdayActive}
+                    onChange={(e) => {
+                      if (form.allDates) return
+                      if (e.target.checked) {
+                        setForm((f) => ({ ...f, from: yesterdayStr, to: yesterdayStr, allDates: false }))
+                      } else {
+                        setForm((f) => {
+                          if (f.from === yesterdayStr && f.to === yesterdayStr) {
+                            return { ...f, ...defaultTwoWeekRange() }
+                          }
+                          return f
+                        })
+                      }
+                    }}
+                  />
+                  Yesterday
+                </label>
+              </div>
+              {!form.allDates ? (
+                <>
+                  <label className="sales-field sales-field--half">
+                    From
+                    <input
+                      type="date"
+                      value={form.from}
+                      onChange={(e) => setForm((f) => ({ ...f, from: e.target.value }))}
+                      required={!form.allDates}
+                    />
+                  </label>
+                  <label className="sales-field sales-field--half">
+                    To
+                    <input
+                      type="date"
+                      value={form.to}
+                      onChange={(e) => setForm((f) => ({ ...f, to: e.target.value }))}
+                      required={!form.allDates}
+                    />
+                  </label>
+                </>
+              ) : null}
+              <label className="sales-field sales-field--quarter">
+                Till
+                <input
+                  value={form.tillCode}
+                  onChange={(e) => setForm((f) => ({ ...f, tillCode: e.target.value }))}
+                  placeholder="T1 / T2 / T3"
+                  autoComplete="off"
+                />
+              </label>
+              <label className="sales-field sales-field--quarter">
+                Payment
+                <select
+                  value={form.paymentMethod}
+                  onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+                >
+                  {PAYMENT_OPTIONS.map((o) => (
+                    <option key={o.value || 'any'} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="sales-field sales-field--quarter">
+                Refund
+                <select
+                  value={form.refund}
+                  onChange={(e) => setForm((f) => ({ ...f, refund: e.target.value as FilterForm['refund'] }))}
+                >
+                  <option value="all">All</option>
+                  <option value="no">Not refunded</option>
+                  <option value="yes">Refunded</option>
+                </select>
+              </label>
+              <label className="sales-field sales-field--quarter">
+                Stock override
+                <select
+                  value={form.stockOverride}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, stockOverride: e.target.value as FilterForm['stockOverride'] }))
+                  }
+                >
+                  <option value="all">All</option>
+                  <option value="yes">Override used</option>
+                  <option value="no">No override</option>
+                </select>
+              </label>
+              <label className="sales-field sales-field--full">
+                Search
+                <input
+                  type="search"
+                  value={form.q}
+                  onChange={(e) => setForm((f) => ({ ...f, q: e.target.value }))}
+                  placeholder="Sale id, id prefix, legacy receipt #, line name…"
+                  title="24-char id = exact match; hex prefix = id starts with; 3+ digits = legacy receipt number; else line item name contains"
+                />
+              </label>
+              <div className="sales-field sales-field--full sales-filter-actions">
+                <button type="submit" className="btn primary" disabled={busy}>
+                  {busy ? 'Loading…' : 'Apply filters'}
+                </button>
+                <button type="button" className="btn ghost" disabled={busy} onClick={() => void load()}>
+                  Refresh
+                </button>
+              </div>
+            </div>
           </form>
 
           {error && <p className="error">{error}</p>}

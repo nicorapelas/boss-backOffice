@@ -41,18 +41,21 @@ function DotInput({
   value,
   min = 0,
   onChange,
+  span = 'half',
 }: {
   label: string
   value: number
   min?: number
   onChange: (next: number) => void
+  span?: 'half' | 'third'
 }) {
   const clamp = (n: number) => Math.max(min, Math.floor(n))
+  const spanClass = span === 'third' ? 'label-field--third' : 'label-field--half'
   return (
-    <label>
+    <label className={`label-field ${spanClass} label-field--dot`}>
       {label}
       <input type="number" min={min} value={value} onChange={(e) => onChange(clamp(Number(e.target.value) || 0))} />
-      <div className="form-actions">
+      <div className="form-actions label-field-nudge">
         <button type="button" className="btn small" onClick={() => onChange(clamp(value - 8))}>
           -8
         </button>
@@ -341,18 +344,24 @@ export function LabelSettingsPage() {
 
   return (
     <BoShell>
-      <h1>Label settings</h1>
-      <p className="muted">Adjust printer transport, stock size, and TSPL content coordinates.</p>
-      {!canRead && <p className="error">Permission required: view products.</p>}
-      {canRead && (
-        <>
-          {error ? <p className="error">{error}</p> : null}
-          {notice ? <p className="success">{notice}</p> : null}
-          <section className="panel">
-            <h2>Transport & stock</h2>
-            <div className="inline-form">
-              <label>
-                Transport
+      <h1 className="bo-settings-title">Label settings</h1>
+      <div className="label-settings-page">
+        <p className="muted label-settings-lead">
+          Printer connection, label stock size, and TSPL dot positions. Saved on this device only.
+        </p>
+        {!canRead && <p className="error">Permission required: view products.</p>}
+        {canRead && (
+          <>
+            {error ? <p className="error">{error}</p> : null}
+            {notice ? <p className="success">{notice}</p> : null}
+            <section className="panel label-settings-section">
+              <h2>Transport &amp; stock</h2>
+              <p className="muted label-settings-section-lead">
+                USB device path or LAN host. Defaults: 55×24&nbsp;mm label, 4&nbsp;mm gap.
+              </p>
+              <div className="label-fields-grid">
+                <label className="label-field label-field--quarter">
+                  Transport
                 <select
                   value={settings.transport.kind}
                   onChange={(e) =>
@@ -369,14 +378,14 @@ export function LabelSettingsPage() {
                   <option value="lan">LAN (IP + port)</option>
                 </select>
               </label>
-              <label>
+              <label className="label-field label-field--quarter label-field--action">
                 Detect
                 <button type="button" className="btn small" onClick={() => void detectTransport()} disabled={detectBusy}>
                   {detectBusy ? 'Detecting…' : 'Detect USB printer'}
                 </button>
               </label>
               {settings.transport.kind === 'usb' ? (
-                <label>
+                <label className="label-field label-field--half">
                   USB path
                   <input
                     value={settings.transport.path}
@@ -386,7 +395,7 @@ export function LabelSettingsPage() {
                 </label>
               ) : (
                 <>
-                  <label>
+                  <label className="label-field label-field--third">
                     Host
                     <input
                       value={settings.transport.host}
@@ -398,7 +407,7 @@ export function LabelSettingsPage() {
                       }
                     />
                   </label>
-                  <label>
+                  <label className="label-field label-field--narrow">
                     Port
                     <input
                       type="number"
@@ -414,7 +423,7 @@ export function LabelSettingsPage() {
                   </label>
                 </>
               )}
-              <label>
+              <label className="label-field label-field--third">
                 Width (mm)
                 <input
                   type="number"
@@ -425,7 +434,7 @@ export function LabelSettingsPage() {
                   }
                 />
               </label>
-              <label>
+              <label className="label-field label-field--third">
                 Height (mm)
                 <input
                   type="number"
@@ -436,7 +445,7 @@ export function LabelSettingsPage() {
                   }
                 />
               </label>
-              <label>
+              <label className="label-field label-field--third">
                 Gap (mm)
                 <input
                   type="number"
@@ -450,10 +459,13 @@ export function LabelSettingsPage() {
             </div>
           </section>
 
-          <section className="panel">
+          <section className="panel label-settings-section">
             <h2>Layout template</h2>
-            <div className="inline-form">
-              <label>
+            <p className="muted label-settings-section-lead">
+              Built-in presets or custom layouts saved in this browser.
+            </p>
+            <div className="label-fields-grid">
+              <label className="label-field label-field--wide">
                 Template
                 <select
                   value={selectOptionsValid ? selectValue : `${SEL_PRESET}compactRetail`}
@@ -480,15 +492,13 @@ export function LabelSettingsPage() {
                   ) : null}
                 </select>
               </label>
-              <label>
-                Apply preset
+              <label className="label-field label-field--quarter label-field--action">
+                Preset
                 <button type="button" className="btn small" onClick={() => void reapplyCurrentTemplate()}>
-                  Re-apply current template
+                  Re-apply current
                 </button>
               </label>
-            </div>
-            <div className="inline-form label-settings-custom-actions">
-              <label>
+              <label className="label-field label-field--half">
                 Save current as custom
                 <input
                   value={saveAsName}
@@ -497,17 +507,15 @@ export function LabelSettingsPage() {
                   maxLength={80}
                 />
               </label>
-              <label>
-                <span className="muted" style={{ display: 'block', marginBottom: '0.25rem' }}>
-                  &nbsp;
-                </span>
+              <label className="label-field label-field--quarter label-field--action">
+                Save
                 <button type="button" className="btn small primary" onClick={() => void saveCurrentAsCustom()}>
                   Save as custom
                 </button>
               </label>
-              <label>
-                Duplicate &amp; delete
-                <div className="form-actions">
+              <label className="label-field label-field--quarter label-field--action">
+                Custom templates
+                <div className="form-actions label-field-actions">
                   <button type="button" className="btn small" onClick={() => void duplicateCurrent()}>
                     Duplicate
                   </button>
@@ -518,20 +526,23 @@ export function LabelSettingsPage() {
                     disabled={settings.templateRef.kind !== 'custom'}
                     title={settings.templateRef.kind !== 'custom' ? 'Select a custom template first' : undefined}
                   >
-                    Delete custom
+                    Delete
                   </button>
                 </div>
               </label>
             </div>
-            <p className="muted">
-              Custom templates store your dot positions in this browser. Duplicating copies the current layout (built-in or custom) into a new named template.
+            <p className="muted label-settings-footnote">
+              Custom templates store dot positions in this browser. Duplicate copies the current layout into a new named
+              template.
             </p>
           </section>
 
-          <section className="panel">
+          <section className="panel label-settings-section">
             <h2>Content positioning (dots)</h2>
-            <p className="muted">203dpi reference: ~8 dots = 1mm. Editing a custom template updates it automatically.</p>
-            <div className="inline-form">
+            <p className="muted label-settings-section-lead">
+              203&nbsp;dpi reference: ~8 dots = 1&nbsp;mm. Editing a custom template updates it automatically.
+            </p>
+            <div className="label-fields-grid label-fields-grid--dots">
               <DotInput label="Name X" value={settings.template.nameX} onChange={(v) => patchTemplate({ nameX: v })} />
               <DotInput label="Name Y" value={settings.template.nameY} onChange={(v) => patchTemplate({ nameY: v })} />
               <DotInput label="SKU X" value={settings.template.skuX} onChange={(v) => patchTemplate({ skuX: v })} />
@@ -543,25 +554,28 @@ export function LabelSettingsPage() {
               <DotInput
                 label="Barcode height"
                 min={10}
+                span="third"
                 value={settings.template.barcodeHeight}
                 onChange={(v) => patchTemplate({ barcodeHeight: v })}
               />
               <DotInput
                 label="Barcode text X"
+                span="third"
                 value={settings.template.barcodeTextX}
                 onChange={(v) => patchTemplate({ barcodeTextX: v })}
               />
               <DotInput
                 label="Barcode text Y"
+                span="third"
                 value={settings.template.barcodeTextY}
                 onChange={(v) => patchTemplate({ barcodeTextY: v })}
               />
             </div>
           </section>
 
-          <section className="panel">
+          <section className="panel label-settings-section">
             <h2>Actions</h2>
-            <div className="form-actions">
+            <div className="form-actions label-settings-actions">
               <TestLabelButton settings={settings} setError={setError} setNotice={setNotice} />
               <FontTestLabelButton settings={settings} setError={setError} setNotice={setNotice} />
               <button
@@ -581,7 +595,8 @@ export function LabelSettingsPage() {
             </div>
           </section>
         </>
-      )}
+        )}
+      </div>
     </BoShell>
   )
 }

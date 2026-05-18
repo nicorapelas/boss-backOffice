@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import { useServerConnection } from '../network/useServerConnection'
 import { IconCloseWindow, IconMinimize } from '../icons/windowChrome'
+import { APP_NAME } from '../brand'
 import { resolveBoLogoSrc } from '../theme/boLogo'
 import { useBoTheme } from '../theme/BoThemeContext'
 
@@ -67,7 +68,7 @@ export function BoShell({ children }: { children: ReactNode }) {
       <aside className="shell-sidebar" aria-label="Back office">
         <div className="shell-sidebar-brand">
           <Link to="/" className="shell-brand-link" aria-label="CogniPOS — Home">
-            <img src={logoMark} alt="" className="shell-brand-logo" decoding="async" />
+            <img src={logoMark} alt={APP_NAME} className="shell-brand-logo" decoding="async" />
           </Link>
           <span className="shell-sub">Back office</span>
         </div>
