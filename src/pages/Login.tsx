@@ -8,7 +8,7 @@ import { useBoTheme } from '../theme/BoThemeContext'
 
 export function Login() {
   const { theme } = useBoTheme()
-  const logoMark = resolveBoLogoSrc(theme)
+  const logoMark = resolveBoLogoSrc(theme, 'light')
   const { session, loading, login } = useAuth()
   const navigate = useNavigate()
   const [mode, setMode] = useState<'login' | 'register'>('login')

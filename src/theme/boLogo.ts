@@ -2,7 +2,15 @@ import logoLight from '../assets/logo-text_bottom-light.png'
 import logoDark from '../assets/logo-text_bottom1-dark.png'
 import type { BoTheme } from './boTheme'
 
-/** Light theme uses the light mark; dark, ubuntu, and elon use the dark mark. */
-export function resolveBoLogoSrc(theme: BoTheme): string {
-  return theme === 'light' ? logoLight : logoDark
+/** `light` = white/light panel; `dark` = coloured or dark chrome (e.g. blue sidebar). */
+export type BoLogoSurface = 'light' | 'dark'
+
+/**
+ * Logo mark for UI chrome.
+ * Light theme and Jacobs on white panels use the dark-coloured mark (`logo-text_bottom-light.png`).
+ */
+export function resolveBoLogoSrc(theme: BoTheme, surface: BoLogoSurface = 'dark'): string {
+  if (theme === 'light') return logoLight
+  if (theme === 'jacobs' && surface === 'light') return logoLight
+  return logoDark
 }
