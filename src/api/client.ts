@@ -357,6 +357,16 @@ export async function runVectorImport(
   }) as Promise<import('./types').VectorImportRunResponse>
 }
 
+export async function pushCatalogToTills() {
+  return apiFetch<import('./types').CatalogPushResponse>('/settings/catalog-push', {
+    method: 'POST',
+  })
+}
+
+export async function getCatalogSyncStatus() {
+  return apiFetch<import('./types').CatalogSyncStatus>('/settings/catalog-sync')
+}
+
 export async function deleteEntireCatalog(confirm: string) {
   return apiFetch<import('./types').CatalogDeleteResponse>('/migration/catalog/delete', {
     method: 'POST',

@@ -1,0 +1,176 @@
+/* Jacobs — bold yellow (#fcfc30), blue (#0909e8), red (#fa0a0a), white & black (pairs with POS). */
+
+html[data-bo-theme='jacobs'] .shell-sidebar {
+  border-right: 5px solid #fcfc30;
+  background: linear-gradient(180deg, #c00909 0%, #fa0a0a 40%, #0c0c20 100%);
+}
+
+html[data-bo-theme='jacobs'] .shell-sidebar-brand {
+  border-bottom: 4px solid #000000;
+}
+
+html[data-bo-theme='jacobs'] .shell-sub {
+  color: #fcfc30;
+  font-weight: 600;
+}
+
+html[data-bo-theme='jacobs'] .shell-nav-link {
+  color: #ffffff;
+  border-width: 2px;
+}
+
+html[data-bo-theme='jacobs'] .shell-nav-link:hover {
+  color: #000000;
+  background: #fcfc30;
+  border-color: #000000;
+}
+
+html[data-bo-theme='jacobs'] .shell-nav-link--active {
+  color: #fff;
+  background: #0909e8;
+  border-color: #0606b0;
+}
+
+html[data-bo-theme='jacobs'] .shell-sidebar-footer {
+  border-top: 4px solid #fcfc30;
+}
+
+html[data-bo-theme='jacobs'] .shell-user {
+  color: #ffffff;
+}
+
+html[data-bo-theme='jacobs'] .shell-content {
+  background: linear-gradient(165deg, #000000 0%, #0909e8 55%, #000000 100%);
+}
+
+html[data-bo-theme='jacobs'] .shell-window-actions {
+  border-bottom: 3px solid #fcfc30;
+}
+
+html[data-bo-theme='jacobs'] .shell-main {
+  color: #f1f5f9;
+}
+
+html[data-bo-theme='jacobs'] .muted {
+  color: #94a3b8;
+}
+
+html[data-bo-theme='jacobs'] .panel {
+  background: #0c0c20;
+  border: 3px solid #fcfc30;
+  box-shadow: 4px 4px 0 #000000;
+}
+
+html[data-bo-theme='jacobs'] .form input,
+html[data-bo-theme='jacobs'] .search,
+html[data-bo-theme='jacobs'] select,
+html[data-bo-theme='jacobs'] .inline-form input,
+html[data-bo-theme='jacobs'] .products-search-field input,
+html[data-bo-theme='jacobs'] .cleanup-input,
+html[data-bo-theme='jacobs'] .inline-password input,
+html[data-bo-theme='jacobs'] .role-editor-display-name input {
+  border: 3px solid #0909e8;
+  background: #000000;
+  color: #f8fafc;
+}
+
+html[data-bo-theme='jacobs'] .btn {
+  border: 3px solid #000000;
+  background: #0909e8;
+  color: #fff;
+  font-weight: 600;
+}
+
+html[data-bo-theme='jacobs'] .btn.primary {
+  background: linear-gradient(180deg, #fcfc30 0%, #e8e820 100%);
+  border-color: #000000;
+  color: #000000;
+}
+
+html[data-bo-theme='jacobs'] .btn.danger {
+  background: #fa0a0a;
+  border-color: #000000;
+  color: #fff;
+}
+
+html[data-bo-theme='jacobs'] .btn.ghost {
+  background: transparent;
+  border: 2px solid #fcfc30;
+  color: #fcfc30;
+}
+
+html[data-bo-theme='jacobs'] .product-row {
+  border: 3px solid #0909e8;
+  background: #141430;
+}
+
+html[data-bo-theme='jacobs'] .table th,
+html[data-bo-theme='jacobs'] .table td {
+  border-bottom-color: #475569;
+}
+
+html[data-bo-theme='jacobs'] .modal-backdrop {
+  background: rgba(5, 8, 16, 0.75);
+}
+
+html[data-bo-theme='jacobs'] .product-edit-presets {
+  border-top-color: #fcfc30;
+}
+
+html[data-bo-theme='jacobs'] .product-edit-preset-row {
+  border-bottom-color: #334155;
+}
+
+html[data-bo-theme='jacobs'] .products-label-settings {
+  border: 2px dashed #0909e8;
+}
+
+html[data-bo-theme='jacobs'] .user-card {
+  border: 3px solid #0909e8;
+  background: #0c0c20;
+}
+
+html[data-bo-theme='jacobs'] .user-card-block {
+  border: 2px solid #475569;
+  background: #080818;
+}
+
+html[data-bo-theme='jacobs'] .audit-kpi {
+  border: 3px solid #fcfc30;
+  background: #0c0c20;
+}
+
+html[data-bo-theme='jacobs'] .role-perm-fieldset,
+html[data-bo-theme='jacobs'] .role-card {
+  border: 3px solid #0909e8;
+  background: #0c0c20;
+}
+
+html[data-bo-theme='jacobs'] .bo-settings-section {
+  border: 3px solid #0909e8;
+  background: #0c0c20;
+  box-shadow: 4px 4px 0 #000000;
+}
+
+html[data-bo-theme='jacobs'] .bo-theme-option {
+  border: 3px solid #475569;
+  background: #141430;
+  color: #f1f5f9;
+}
+
+html[data-bo-theme='jacobs'] .bo-theme-option:hover {
+  border-color: #fcfc30;
+}
+
+html[data-bo-theme='jacobs'] .bo-theme-option--selected {
+  border-color: #fa0a0a;
+  box-shadow: 0 0 0 2px rgba(252, 252, 48, 0.55);
+  background: #080818;
+  color: #fcfc30;
+}
+
+@media (max-width: 768px) {
+  html[data-bo-theme='jacobs'] .shell-sidebar {
+    border-bottom: 5px solid #fcfc30;
+  }
+}

@@ -1,4 +1,4 @@
-export type BoTheme = 'dark' | 'light' | 'ubuntu' | 'elon' | 'lego'
+export type BoTheme = 'dark' | 'light' | 'ubuntu' | 'elon' | 'lego' | 'jacobs'
 
 const STORAGE_KEY = 'electropos-backoffice-theme'
 
@@ -27,7 +27,8 @@ export function readStoredBoTheme(): BoTheme {
     const v = localStorage.getItem(STORAGE_KEY)
     const migrated = migrateStoredTheme(v)
     if (migrated) return migrated
-    if (v === 'light' || v === 'dark' || v === 'ubuntu' || v === 'elon' || v === 'lego') return v
+    if (v === 'light' || v === 'dark' || v === 'ubuntu' || v === 'elon' || v === 'lego' || v === 'jacobs')
+      return v
   } catch {
     /* ignore */
   }

@@ -763,6 +763,35 @@ html[data-bo-theme='light'] .product-edit-preset-row {
   font-size: 0.8rem;
 }
 
+.catalog-push-panel {
+  margin-bottom: 1rem;
+}
+
+.catalog-push-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.catalog-push-lead {
+  margin: 0 0 0.5rem;
+}
+
+.catalog-push-meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+}
+
+.catalog-push-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.catalog-push-notice {
+  margin: 0.65rem 0 0;
+}
+
 .product-form {
   margin-bottom: 1rem;
 }

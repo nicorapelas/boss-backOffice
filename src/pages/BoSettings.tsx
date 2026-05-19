@@ -9,6 +9,7 @@ const THEMES: { id: BoTheme; label: string; hint: string }[] = [
   { id: 'ubuntu', label: 'Ubuntu', hint: 'Violet, teal, and coral accents' },
   { id: 'elon', label: 'Elon', hint: 'Old Glory blue & red — bold, minimal white' },
   { id: 'lego', label: 'Bricks', hint: 'Classic toy-brick reds, yellows & blues on a deep base' },
+  { id: 'jacobs', label: 'Jacobs', hint: 'Bold yellow, blue & red on black and white' },
 ]
 
 export function BoSettingsPage() {

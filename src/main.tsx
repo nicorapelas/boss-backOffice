@@ -6,6 +6,7 @@ import { applyBoThemeToDocument, readStoredBoTheme } from './theme/boTheme'
 import './theme/bo-theme-ubuntu.css'
 import './theme/bo-theme-elon.css'
 import './theme/bo-theme-lego.css'
+import './theme/bo-theme-jacobs.css'
 
 applyBoThemeToDocument(readStoredBoTheme())
 

@@ -7,7 +7,14 @@ import {
   useState,
   type FormEvent,
 } from 'react'
-import { apiFetch, deleteProductPhoto, fetchProductPhotoObjectUrl, uploadProductPhoto } from '../api/client'
+import {
+  apiFetch,
+  deleteProductPhoto,
+  fetchProductPhotoObjectUrl,
+  getCatalogSyncStatus,
+  pushCatalogToTills,
+  uploadProductPhoto,
+} from '../api/client'
 import type { Product, ProductPresetsState, Supplier, SupplierOffer } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
@@ -97,6 +104,10 @@ export function Products() {
     hasPermission(session?.user, 'presets.read') || hasPermission(session?.user, 'presets.write')
   const [products, setProducts] = useState<Product[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [catalogPushBusy, setCatalogPushBusy] = useState(false)
+  const [catalogPushNotice, setCatalogPushNotice] = useState<string | null>(null)
+  const [catalogPushedAt, setCatalogPushedAt] = useState<string | null>(null)
+  const [catalogRevision, setCatalogRevision] = useState<number | null>(null)
 
   const [createName, setCreateName] = useState('')
   const [createSku, setCreateSku] = useState('')
@@ -196,6 +207,33 @@ export function Products() {
     if (!canRead) return
     void load()
   }, [load, canRead])
+
+  useEffect(() => {
+    if (!canRead) return
+    void getCatalogSyncStatus()
+      .then((s) => {
+        setCatalogRevision(s.catalogRevision)
+        setCatalogPushedAt(s.catalogPushedAt)
+      })
+      .catch(() => undefined)
+  }, [canRead])
+
+  async function onPushCatalogToTills() {
+    setCatalogPushNotice(null)
+    setCatalogPushBusy(true)
+    try {
+      const result = await pushCatalogToTills()
+      setCatalogRevision(result.catalogRevision)
+      setCatalogPushedAt(result.catalogPushedAt)
+      setCatalogPushNotice(
+        `Push sent (revision ${result.catalogRevision}). Signed-in tills should refresh their catalog within about a minute.`,
+      )
+    } catch (e) {
+      setCatalogPushNotice(e instanceof Error ? e.message : 'Could not push catalog to tills')
+    } finally {
+      setCatalogPushBusy(false)
+    }
+  }
 
   const loadSuppliers = useCallback(async () => {
     if (!canSuppliersRead) {
@@ -763,6 +801,44 @@ export function Products() {
     <BoShell>
       <h1>Products</h1>
       <p className="muted">Manage catalog and stock.</p>
+
+      {canWrite ? (
+        <section className="panel catalog-push-panel" aria-labelledby="catalog-push-heading">
+          <h2 id="catalog-push-heading" className="catalog-push-title">
+            POS tills
+          </h2>
+          <p className="muted catalog-push-lead">
+            After bulk edits or price changes, push so signed-in registers download the latest catalog from the
+            server. Each till checks about every 30 seconds.
+          </p>
+          {catalogRevision != null ? (
+            <p className="muted catalog-push-meta">
+              Catalog revision <strong>{catalogRevision}</strong>
+              {catalogPushedAt ? (
+                <>
+                  {' '}
+                  · last push {new Date(catalogPushedAt).toLocaleString()}
+                </>
+              ) : null}
+            </p>
+          ) : null}
+          <div className="catalog-push-actions">
+            <button
+              type="button"
+              className="btn primary"
+              disabled={catalogPushBusy}
+              onClick={() => void onPushCatalogToTills()}
+            >
+              {catalogPushBusy ? 'Pushing…' : 'Push catalog to tills'}
+            </button>
+          </div>
+          {catalogPushNotice ? (
+            <p className={catalogPushNotice.startsWith('Push sent') ? 'success catalog-push-notice' : 'error catalog-push-notice'}>
+              {catalogPushNotice}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {!canRead && <p className="error">Permission required: view products.</p>}
 

@@ -397,6 +397,18 @@ export interface StoreSettings {
   /** Present on GET /settings/store; synced with POS preset buttons. */
   productPresets?: ProductPresetsState
   customerDisplay?: CustomerDisplaySettings
+  catalogRevision?: number
+  catalogPushedAt?: string | null
+}
+
+export interface CatalogSyncStatus {
+  catalogRevision: number
+  catalogPushedAt: string | null
+}
+
+export interface CatalogPushResponse {
+  catalogRevision: number
+  catalogPushedAt: string
 }
 
 /** GET /house-accounts */
