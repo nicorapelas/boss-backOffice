@@ -25,6 +25,7 @@ import {
   removePresetAt as removePresetFromState,
 } from '../utils/productPresets'
 import { LABEL_SETTINGS_KEY, readLabelSettings, type LabelPrinterSettings } from '../labels/labelSettings'
+import { useCatalogRevisionSync } from '../hooks/useCatalogRevisionSync'
 
 type VolumeTierDraft = { id: string; minQty: string; maxTo: string; unitPrice: string }
 
@@ -207,6 +208,18 @@ export function Products() {
     if (!canRead) return
     void load()
   }, [load, canRead])
+
+  const refreshCatalogFromServer = useCallback(() => {
+    void load()
+    void getCatalogSyncStatus()
+      .then((s) => {
+        setCatalogRevision(s.catalogRevision)
+        setCatalogPushedAt(s.catalogPushedAt)
+      })
+      .catch(() => undefined)
+  }, [load])
+
+  useCatalogRevisionSync(canRead, refreshCatalogFromServer)
 
   useEffect(() => {
     if (!canRead) return
