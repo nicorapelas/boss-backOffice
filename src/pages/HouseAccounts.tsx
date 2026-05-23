@@ -8,7 +8,6 @@ import {
   paymentTermsLabel,
   type HouseAccountPaymentTerms,
 } from '../houseAccounts/paymentTerms'
-import { ScanPairingPanel } from '../components/ScanPairingPanel'
 import { BoShell } from '../layouts/BoShell'
 
 function round2(n: number) {
@@ -391,7 +390,6 @@ export function HouseAccountsPage() {
       {!isAdmin && <p className="error">Permission required: house accounts.</p>}
       {isAdmin && (
         <>
-          <ScanPairingPanel />
           <div className="panel audit-toolbar">
             <span className="muted">
               Total AR (active balances): <strong>{totalOwed.toFixed(2)}</strong>
