@@ -73,9 +73,12 @@ export function BoShell({ children }: { children: ReactNode }) {
           <span className="shell-sub">Back office</span>
         </div>
         <nav className="shell-nav" aria-label="Sections">
+          <NavLink to="/" end className={navCls}>
+            Dashboard
+          </NavLink>
           {hasPermission(u, 'catalog.read') ? (
             <>
-              <NavLink to="/" end className={navCls}>
+              <NavLink to="/products" className={navCls}>
                 Products
               </NavLink>
               <NavLink to="/label-settings" className={navCls}>

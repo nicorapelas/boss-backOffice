@@ -4,6 +4,7 @@ import { RequireAuth } from './layouts/RequireAuth'
 import { ScrollToTopOnNavigate } from './layouts/ScrollToTopOnNavigate'
 import { BoThemeProvider } from './theme/BoThemeContext'
 import { DataCleanupPage } from './pages/DataCleanup'
+import { DashboardPage } from './pages/Dashboard'
 import { LayBysPage } from './pages/LayBys'
 import { FinancialsPage } from './pages/Financials'
 import { HouseAccountsPage } from './pages/HouseAccounts'
@@ -33,7 +34,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<RequireAuth />}>
-            <Route path="/" element={<Products />} />
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/products" element={<Products />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/roles" element={<RolesPage />} />

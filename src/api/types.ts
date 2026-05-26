@@ -222,6 +222,7 @@ export interface BackOfficeUser {
   roleIsSystem?: boolean
   active?: boolean
   allowOfflineLogin?: boolean
+  allowShopAssistCatalogAdjustment?: boolean
   legacy?: {
     source?: 'vector'
     userNo?: number

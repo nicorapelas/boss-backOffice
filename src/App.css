@@ -99,7 +99,7 @@ html.electron-shell .auth-window-actions button {
 }
 
 html[data-bo-theme='light'] .shell-sub {
-    color: #555;
+    color: #252525;
   }
 
 .shell-nav {
@@ -139,16 +139,16 @@ html[data-bo-theme='light'] .shell-sub {
 }
 
 html[data-bo-theme='light'] .shell-nav-link {
-    color: #3a3f55;
+    color: #1f2430;
   }
 
 html[data-bo-theme='light'] .shell-nav-link:hover {
-    color: #1a1d28;
+    color: #05070c;
     background: rgba(0, 0, 0, 0.05);
   }
 
 html[data-bo-theme='light'] .shell-nav-link--active {
-    color: #12151f;
+    color: #05070c;
     background: #e8eaf7;
     border-color: #c5cae0;
   }
@@ -180,7 +180,7 @@ html[data-bo-theme='light'] .shell-sidebar-footer {
 }
 
 html[data-bo-theme='light'] .shell-user {
-    color: #555;
+    color: #252525;
   }
 
 .shell-brand a {
@@ -219,7 +219,7 @@ html[data-bo-theme='light'] .shell-user {
 }
 
 html[data-bo-theme='light'] .shell-content {
-    background: #f0f2f5;
+    background: #dbcfb4;
   }
 
 .shell-window-actions {
@@ -274,7 +274,7 @@ html[data-bo-theme='light'] .shell-window-actions {
 }
 
 html[data-bo-theme='light'] .shell-main-title {
-  background: #e8eaf7;
+  background: #dbcfb4;
   border-bottom-color: #c5cae0;
 }
 
@@ -433,7 +433,7 @@ html[data-bo-theme='light'] .shell-main-title {
 }
 
 html[data-bo-theme='light'] .panel {
-    background: #fff;
+    background: #dbcfb4;
     border-color: #ddd;
   }
 
@@ -484,7 +484,7 @@ html[data-bo-theme='light'] .panel {
 
 html[data-bo-theme='light'] .form input {
     border-color: #ccc;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 .btn {
@@ -520,6 +520,14 @@ html[data-bo-theme='light'] .form input {
 .muted {
   color: #888;
   font-size: 0.9rem;
+}
+
+html[data-bo-theme='light'] .muted {
+  color: #252525;
+}
+
+html[data-bo-theme='light'] :is(.audit-kpi-label, .dashboard-metric-label, .dashboard-metric-detail, .dashboard-status-label) {
+  color: #252525;
 }
 
 .error {
@@ -560,7 +568,7 @@ html[data-bo-theme='light'] .form input {
 
 html[data-bo-theme='light'] .search {
     border-color: #ccc;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 .product-list {
@@ -590,7 +598,7 @@ html[data-bo-theme='light'] .search {
 
 html[data-bo-theme='light'] .product-row {
     border-color: #ddd;
-    background: #fafafa;
+    background: #dbcfb4;
   }
 
 .product-row:disabled {
@@ -868,7 +876,7 @@ html[data-bo-theme='light'] .product-edit-preset-row {
 html[data-bo-theme='light'] .product-fields-grid input,
 html[data-bo-theme='light'] .product-fields-grid select {
   border-color: #ccc;
-  background: #fff;
+  background: #dbcfb4;
 }
 
 .product-fields-grid .help-note {
@@ -1003,7 +1011,7 @@ html[data-bo-theme='light'] .user-fields-grid select,
 html[data-bo-theme='light'] .sales-fields-grid input,
 html[data-bo-theme='light'] .sales-fields-grid select {
   border-color: #ccc;
-  background: #fff;
+  background: #dbcfb4;
 }
 
 .label-field-nudge {
@@ -1099,7 +1107,7 @@ html[data-bo-theme='light'] .sales-fields-grid select {
 
 html[data-bo-theme='light'] .house-account-form .sales-fields-grid textarea {
   border-color: #ccc;
-  background: #fff;
+  background: #dbcfb4;
 }
 
 .house-account-detail-grid {
@@ -1136,7 +1144,7 @@ html[data-bo-theme='light'] .house-account-form .sales-fields-grid textarea {
 .bo-shopassist-pairing-qr {
   flex-shrink: 0;
   padding: 0.65rem;
-  background: #fff;
+  background: #dbcfb4;
   border-radius: 10px;
   border: 1px solid #444;
 }
@@ -1167,7 +1175,7 @@ html[data-bo-theme='light'] .bo-shopassist-pairing-qr {
 }
 
 html[data-bo-theme='light'] .bo-shopassist-pairing-url {
-  background: #f5f5f5;
+  background: #dbcfb4;
   border-color: #ccc;
 }
 
@@ -1271,7 +1279,7 @@ html[data-bo-theme='light'] .bo-shopassist-pairing-url {
 html[data-bo-theme='light'] .inline-form input,
 html[data-bo-theme='light'] .inline-form select {
     border-color: #ccc;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 .product-form .checkbox-row {
@@ -1371,7 +1379,7 @@ html[data-bo-theme='light'] .inline-form select {
 
 html[data-bo-theme='light'] .products-search-field input {
     border-color: #ccc;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 html[data-bo-theme='light'] .products-label-settings {
@@ -1411,7 +1419,7 @@ html[data-bo-theme='light'] .products-label-settings {
 
 html[data-bo-theme='light'] .cleanup-input {
     border-color: #ccc;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 .check-inline {
@@ -1448,7 +1456,7 @@ select {
 html[data-bo-theme='light'] .inline-password input,
 html[data-bo-theme='light'] select {
     border-color: #ccc;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 .bo-section-title {
@@ -1573,12 +1581,12 @@ html[data-bo-theme='light'] select {
 
 html[data-bo-theme='light'] .user-card {
     border-color: #ddd;
-    background: #fafafa;
+    background: #dbcfb4;
   }
 
 html[data-bo-theme='light'] .user-card-block {
     border-color: #e4e4e4;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 .audit-grid {
@@ -1618,7 +1626,7 @@ html[data-bo-theme='light'] .user-card-block {
 
 html[data-bo-theme='light'] .audit-kpi {
     border-color: #ddd;
-    background: #fafafa;
+    background: #dbcfb4;
   }
 
 .audit-kpi-label {
@@ -1629,6 +1637,99 @@ html[data-bo-theme='light'] .audit-kpi {
 .audit-kpi-value {
   font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* Dashboard */
+.dashboard-hero-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-hero-panel h2 {
+  margin: 0 0 0.25rem;
+}
+
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .dashboard-hero-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dashboard-metric-label,
+.dashboard-metric-detail,
+.dashboard-status-label {
+  color: #9a9a9a;
+  font-size: 0.82rem;
+}
+
+.dashboard-metric-value {
+  font-size: 1.45rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.dashboard-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  background: #151515;
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-status-row--link:hover {
+  border-color: #5865f2;
+}
+
+html[data-bo-theme='light'] .dashboard-status-row {
+  border-color: #ddd;
+  background: #dbcfb4;
 }
 
 /* Roles page */
@@ -1688,7 +1789,7 @@ html[data-bo-theme='light'] .audit-kpi {
 
 html[data-bo-theme='light'] .role-editor-display-name input {
     border-color: #ccc;
-    background: #fff;
+    background: #dbcfb4;
   }
 
 .role-card {
@@ -1701,7 +1802,7 @@ html[data-bo-theme='light'] .role-editor-display-name input {
 html[data-bo-theme='light'] .role-perm-fieldset,
 html[data-bo-theme='light'] .role-card {
     border-color: #ddd;
-    background: #fafafa;
+    background: #dbcfb4;
   }
 
 /* Back office — Settings (appearance) */
@@ -1728,7 +1829,7 @@ html[data-bo-theme='light'] .role-card {
 
 html[data-bo-theme='light'] .bo-settings-section {
   border-color: #ccc;
-  background: #fafafa;
+  background: #dbcfb4;
 }
 
 .bo-settings-section-title {
@@ -1778,8 +1879,8 @@ html[data-bo-theme='light'] .bo-settings-section {
 
 html[data-bo-theme='light'] .bo-theme-option {
   border-color: #bbb;
-  background: #fff;
-  color: #213547;
+  background: #dbcfb4;
+  color: #111827;
 }
 
 /* Back office — Store settings */
@@ -1835,7 +1936,7 @@ html[data-bo-theme='light'] .bo-theme-option {
 html[data-bo-theme='light'] .store-settings-form .stack input:not([type='color']),
 html[data-bo-theme='light'] .store-settings-form .stack textarea {
   border-color: #ccc;
-  background: #fff;
+  background: #dbcfb4;
 }
 
 .store-settings-form .field-hint {
@@ -1915,4 +2016,69 @@ html[data-bo-theme='light'] .bo-theme-option--selected {
 .bo-theme-option-hint {
   font-size: 0.82rem;
   margin: 0;
+}
+
+html[data-bo-theme='light'] :is(
+  .panel,
+  .form input,
+  .search,
+  .product-row,
+  .product-fields-grid input,
+  .product-fields-grid select,
+  .label-fields-grid input,
+  .label-fields-grid select,
+  .user-fields-grid input,
+  .user-fields-grid select,
+  .sales-fields-grid input,
+  .sales-fields-grid select,
+  .house-account-form .sales-fields-grid textarea,
+  .bo-shopassist-pairing-qr,
+  .bo-shopassist-pairing-url,
+  .inline-form input,
+  .inline-form select,
+  .products-search-field input,
+  .products-label-settings,
+  .cleanup-input,
+  .inline-password input,
+  select,
+  .user-card,
+  .user-card-block,
+  .audit-kpi,
+  .dashboard-status-row,
+  .role-editor-display-name input,
+  .role-perm-fieldset,
+  .role-card,
+  .bo-settings-section,
+  .bo-theme-option,
+  .store-settings-form .stack input:not([type='color']),
+  .store-settings-form .stack textarea
+) {
+  border-width: 3px;
+}
+
+html[data-bo-theme='light'] .shell-sidebar {
+  border-right-width: 3px;
+}
+
+html[data-bo-theme='light'] :is(
+  .shell-sidebar-brand,
+  .shell-window-actions,
+  .shell-main-title,
+  .product-edit-preset-row
+) {
+  border-bottom-width: 3px;
+}
+
+html[data-bo-theme='light'] :is(.shell-sidebar-footer, .product-edit-presets) {
+  border-top-width: 3px;
+}
+
+html[data-bo-theme='light'] :is(.table th, .table td) {
+  border-bottom-width: 3px;
+}
+
+@media (max-width: 768px) {
+  html[data-bo-theme='light'] .shell-sidebar {
+    border-bottom-width: 3px;
+  }
 }

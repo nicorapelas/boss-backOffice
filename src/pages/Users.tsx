@@ -25,6 +25,7 @@ export function UsersPage() {
     badgeCode: '',
     roleId: '',
     allowOfflineLogin: false,
+    allowShopAssistCatalogAdjustment: false,
   })
 
   async function load() {
@@ -114,6 +115,7 @@ export function UsersPage() {
           badgeCode: newUser.badgeCode || undefined,
           roleId: newUser.roleId,
           allowOfflineLogin: newUser.allowOfflineLogin,
+          allowShopAssistCatalogAdjustment: newUser.allowShopAssistCatalogAdjustment,
         }),
       })
       const cashier = roles.find((r) => r.slug === 'cashier')
@@ -124,6 +126,7 @@ export function UsersPage() {
         badgeCode: '',
         roleId: cashier?._id ?? '',
         allowOfflineLogin: false,
+        allowShopAssistCatalogAdjustment: false,
       })
       await load()
     } catch (err) {
@@ -232,6 +235,19 @@ export function UsersPage() {
                     onChange={(e) => setNewUser((p) => ({ ...p, allowOfflineLogin: e.target.checked }))}
                   />
                   <span>Allow offline login on the till when the server is unreachable</span>
+                </label>
+                <label className="user-field user-field--full form-checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={newUser.allowShopAssistCatalogAdjustment}
+                    onChange={(e) =>
+                      setNewUser((p) => ({
+                        ...p,
+                        allowShopAssistCatalogAdjustment: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Allow ShopAssist Catalog Adjustment</span>
                 </label>
                 <div className="user-field user-field--full user-create-actions">
                   <button type="submit" className="btn primary" disabled={busy}>
@@ -343,6 +359,22 @@ export function UsersPage() {
                             onChange={(e) => void patchUser(u._id, { allowOfflineLogin: e.target.checked })}
                           />
                           <span>{u.allowOfflineLogin ? 'Offline login allowed' : 'Offline login blocked'}</span>
+                        </label>
+                        <label className="check-inline">
+                          <input
+                            type="checkbox"
+                            checked={u.allowShopAssistCatalogAdjustment === true}
+                            onChange={(e) =>
+                              void patchUser(u._id, {
+                                allowShopAssistCatalogAdjustment: e.target.checked,
+                              })
+                            }
+                          />
+                          <span>
+                            {u.allowShopAssistCatalogAdjustment
+                              ? 'ShopAssist catalog adjustment allowed'
+                              : 'ShopAssist catalog adjustment blocked'}
+                          </span>
                         </label>
                       </div>
                     </section>
