@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { getCatalogSyncStatus } from '../api/client'
+import { getCatalogSyncStatus, subscribeServerEvents } from '../api/client'
 
 const POLL_MS = 30_000
 
@@ -16,6 +16,19 @@ export function useCatalogRevisionSync(active: boolean, onRevisionBump: () => vo
     }
 
     let cancelled = false
+    const unsubscribe = subscribeServerEvents((ev) => {
+      if (cancelled) return
+      if (ev.type !== 'catalog.revision') return
+      if (!baselineSetRef.current) {
+        revisionRef.current = ev.catalogRevision
+        baselineSetRef.current = true
+        return
+      }
+      if (revisionRef.current != null && ev.catalogRevision > revisionRef.current) {
+        revisionRef.current = ev.catalogRevision
+        onRevisionBump()
+      }
+    })
 
     const check = async () => {
       try {
@@ -45,6 +58,7 @@ export function useCatalogRevisionSync(active: boolean, onRevisionBump: () => vo
 
     return () => {
       cancelled = true
+      unsubscribe()
       window.clearInterval(timer)
     }
   }, [active, onRevisionBump])

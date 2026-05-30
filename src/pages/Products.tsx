@@ -15,7 +15,7 @@ import {
   pushCatalogToTills,
   uploadProductPhoto,
 } from '../api/client'
-import type { Product, ProductPresetsState, Supplier, SupplierOffer } from '../api/types'
+import type { Product, ProductPresetsState, StockAdjustmentRow, Supplier, SupplierOffer } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
@@ -94,6 +94,25 @@ function offerSupplierId(offer: SupplierOffer): string {
   return ''
 }
 
+function stockAdjustmentSourceLabel(sourceApp: string): string {
+  switch (sourceApp) {
+    case 'shop-assist':
+      return 'ShopAssist'
+    case 'back-office':
+      return 'Back Office'
+    case 'pos':
+      return 'POS'
+    case 'scan':
+      return 'Scan'
+    default:
+      return 'Unknown'
+  }
+}
+
+function stockAdjustmentUserLabel(row: StockAdjustmentRow): string {
+  return row.changedByDisplayName?.trim() || row.changedByEmail
+}
+
 export function Products() {
   const { session } = useAuth()
   const canRead = hasPermission(session?.user, 'catalog.read')
@@ -139,6 +158,8 @@ export function Products() {
   const [editJobCardLabour, setEditJobCardLabour] = useState('')
   const [editPhotoPreviewUrl, setEditPhotoPreviewUrl] = useState<string | undefined>(undefined)
   const [photoBusy, setPhotoBusy] = useState(false)
+  const [stockHistory, setStockHistory] = useState<StockAdjustmentRow[]>([])
+  const [stockHistoryBusy, setStockHistoryBusy] = useState(false)
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
 
@@ -171,6 +192,30 @@ export function Products() {
       // ignore quota/private mode
     }
   }, [labelSettings])
+
+  useEffect(() => {
+    if (!editing || !canRead) {
+      setStockHistory([])
+      return
+    }
+    let cancelled = false
+    setStockHistoryBusy(true)
+    void apiFetch<StockAdjustmentRow[]>(
+      `/products/${encodeURIComponent(editing._id)}/stock-adjustments?limit=20`,
+    )
+      .then((rows) => {
+        if (!cancelled) setStockHistory(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setStockHistory([])
+      })
+      .finally(() => {
+        if (!cancelled) setStockHistoryBusy(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [editing?._id, canRead])
 
   const presetCategoryOptions = useMemo(() => {
     if (!sharedPresets) return []
@@ -1530,6 +1575,31 @@ export function Products() {
                     disabled={!editTrackInventory}
                   />
                 </label>
+                {editTrackInventory ? (
+                  <div className="product-field product-field--full">
+                    <span className="product-field-label">Stock adjustment history</span>
+                    {stockHistoryBusy ? (
+                      <p className="muted help-note">Loading history…</p>
+                    ) : stockHistory.length === 0 ? (
+                      <p className="muted help-note">No recorded stock changes yet.</p>
+                    ) : (
+                      <ul className="stock-adjustment-history">
+                        {stockHistory.map((row) => (
+                          <li key={row._id}>
+                            <span>
+                              {new Date(row.createdAt).toLocaleString()} · {stockAdjustmentUserLabel(row)} ·{' '}
+                              {stockAdjustmentSourceLabel(row.sourceApp)}
+                            </span>
+                            <span className="stock-adjustment-history-delta">
+                              {row.fromStock} → {row.toStock} ({row.delta >= 0 ? '+' : ''}
+                              {row.delta})
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
                 <label className="product-field product-field--full">
                   Job card labour (per unit)
                   <input
