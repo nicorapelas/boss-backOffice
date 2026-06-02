@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { apiFetch } from '../api/client'
-import type { CustomerDisplaySettings, StoreSettings } from '../api/types'
+import type { CustomerDisplaySettings, LoyaltyProgramConfig, StoreSettings } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
@@ -77,6 +78,7 @@ export function StoreSettingsPage() {
           defaultExpiryMonths: form.defaultExpiryMonths,
           vatRate: form.vatRate,
           customerDisplay: form.customerDisplay,
+          loyaltyProgram: form.loyaltyProgram,
         }),
       })
       setForm(updated)
@@ -89,6 +91,13 @@ export function StoreSettingsPage() {
   }
 
   const cd = defaultCustomerDisplay(form.customerDisplay)
+  const lp: LoyaltyProgramConfig = form.loyaltyProgram ?? {
+    enabled: false,
+    pointsPerRand: 1,
+    redeemValuePerPoint: 0.1,
+    minRedeemPoints: 100,
+    maxRedeemPercent: 50,
+  }
 
   return (
     <BoShell>
@@ -206,6 +215,96 @@ export function StoreSettingsPage() {
                     disabled={!canSave}
                   />
                   <span className="field-hint muted">e.g. 0.14 for 14%</span>
+                </label>
+              </div>
+            </section>
+
+            <section className="bo-settings-section" aria-labelledby="loyalty-heading">
+              <h2 id="loyalty-heading" className="bo-settings-section-title">
+                Loyalty program
+              </h2>
+              <p className="muted bo-settings-section-lead">
+                Phone-based loyalty at the till. Members are created on first use. Manage members on the{' '}
+                <Link to="/loyalty">Loyalty</Link> page.
+              </p>
+              <label className="form-checkbox-row form-grid__full">
+                <input
+                  type="checkbox"
+                  checked={lp.enabled === true}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      loyaltyProgram: { ...lp, enabled: e.target.checked },
+                    }))
+                  }
+                  disabled={!canSave}
+                />
+                <span>Enable loyalty program</span>
+              </label>
+              <div className="form-grid form-grid--3">
+                <label className="stack">
+                  Points per R1 spent
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={lp.pointsPerRand}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        loyaltyProgram: { ...lp, pointsPerRand: Number(e.target.value) },
+                      }))
+                    }
+                    disabled={!canSave || !lp.enabled}
+                  />
+                </label>
+                <label className="stack">
+                  R value per point
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={lp.redeemValuePerPoint}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        loyaltyProgram: { ...lp, redeemValuePerPoint: Number(e.target.value) },
+                      }))
+                    }
+                    disabled={!canSave || !lp.enabled}
+                  />
+                  <span className="field-hint muted">e.g. 0.1 → 100 pts = R10</span>
+                </label>
+                <label className="stack">
+                  Min redeem (points)
+                  <input
+                    type="number"
+                    min={0}
+                    value={lp.minRedeemPoints}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        loyaltyProgram: { ...lp, minRedeemPoints: Number(e.target.value) },
+                      }))
+                    }
+                    disabled={!canSave || !lp.enabled}
+                  />
+                </label>
+                <label className="stack">
+                  Max redeem (% of sale)
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={lp.maxRedeemPercent}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        loyaltyProgram: { ...lp, maxRedeemPercent: Number(e.target.value) },
+                      }))
+                    }
+                    disabled={!canSave || !lp.enabled}
+                  />
                 </label>
               </div>
             </section>

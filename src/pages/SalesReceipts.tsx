@@ -439,6 +439,18 @@ export function SalesReceiptsPage() {
                                     {s.houseAccountNumber ? ` (${s.houseAccountNumber})` : ''}
                                   </p>
                                 )}
+                                {(s.loyaltyDiscountAmount ?? 0) > 0.005 && (
+                                  <p className="muted" style={{ margin: '0 0 0.35rem' }}>
+                                    Loyalty: −{s.loyaltyDiscountAmount?.toFixed(2)}
+                                    {(s.loyaltyPointsRedeemed ?? 0) > 0
+                                      ? ` (${s.loyaltyPointsRedeemed?.toLocaleString()} pts redeemed)`
+                                      : ''}
+                                    {s.loyaltyPhoneMasked ? ` · ${s.loyaltyPhoneMasked}` : ''}
+                                    {(s.loyaltyPointsEarned ?? 0) > 0
+                                      ? ` · +${s.loyaltyPointsEarned?.toLocaleString()} pts earned`
+                                      : ''}
+                                  </p>
+                                )}
                                 {s.payment && (
                                   <p className="muted" style={{ margin: '0 0 0.35rem' }}>
                                     Cash {s.payment.cashAmount?.toFixed(2) ?? '0'} · Card{' '}

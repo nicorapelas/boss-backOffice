@@ -119,6 +119,11 @@ export interface Sale {
   refundPayoutMethod?: 'cash' | 'card' | 'store_credit'
   refundPayoutAmount?: number
   storeCreditAmount?: number
+  loyaltyPhone?: string
+  loyaltyPhoneMasked?: string
+  loyaltyPointsRedeemed?: number
+  loyaltyPointsEarned?: number
+  loyaltyDiscountAmount?: number
   onAccountAmount?: number
   houseAccountNumber?: string
   houseAccountName?: string
@@ -395,6 +400,43 @@ export interface CustomerDisplaySettings {
   footerText?: string
 }
 
+export interface LoyaltyProgramConfig {
+  enabled: boolean
+  pointsPerRand: number
+  redeemValuePerPoint: number
+  minRedeemPoints: number
+  maxRedeemPercent: number
+}
+
+export interface LoyaltyMemberRow {
+  _id: string
+  phoneMasked: string
+  pointsBalance: number
+  status: 'active' | 'blocked'
+  optedInAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface LoyaltyPurchaseRow {
+  _id: string
+  saleId?: string
+  createdAt?: string
+  tillCode?: string
+  total: number
+  paymentMethod?: string
+  itemCount: number
+  loyaltyDiscountAmount?: number
+  loyaltyPointsEarned?: number
+  loyaltyPointsRedeemed?: number
+  refundStatus?: 'partial' | 'refunded'
+}
+
+export interface LoyaltyPurchaseListResponse {
+  total: number
+  purchases: LoyaltyPurchaseRow[]
+}
+
 export interface StoreSettings {
   _id: string
   storeName: string
@@ -411,6 +453,7 @@ export interface StoreSettings {
   /** Present on GET /settings/store; synced with POS preset buttons. */
   productPresets?: ProductPresetsState
   customerDisplay?: CustomerDisplaySettings
+  loyaltyProgram?: LoyaltyProgramConfig
   catalogRevision?: number
   catalogPushedAt?: string | null
 }

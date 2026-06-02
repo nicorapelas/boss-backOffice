@@ -1,11 +1,13 @@
-import { Children, isValidElement, useEffect, useState, type ReactNode } from 'react'
+import { Children, isValidElement, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import type { OfflineSyncConflictListResponse } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
+import { CommandPalette, commandPaletteShortcutLabel, useCommandPaletteShortcut } from '../components/CommandPalette'
+import { IconCloseWindow, IconMinimize, IconSearch } from '../icons/windowChrome'
 import { useServerConnection } from '../network/useServerConnection'
-import { IconCloseWindow, IconMinimize } from '../icons/windowChrome'
+import { getAccessibleNavEntries } from '../nav/boNavRegistry'
 import { APP_NAME } from '../brand'
 import { resolveBoLogoSrc } from '../theme/boLogo'
 import { useBoTheme } from '../theme/BoThemeContext'
@@ -36,6 +38,15 @@ export function BoShell({ children }: { children: ReactNode }) {
   const { disconnected, recovered } = useServerConnection()
   const canReadSales = hasPermission(u, 'sales.read')
   const [openOfflineConflictCount, setOpenOfflineConflictCount] = useState(0)
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+
+  const toggleCommandPalette = useCallback(() => setCommandPaletteOpen((open) => !open), [])
+  const openCommandPalette = useCallback(() => setCommandPaletteOpen(true), [])
+  const closeCommandPalette = useCallback(() => setCommandPaletteOpen(false), [])
+  useCommandPaletteShortcut(toggleCommandPalette)
+
+  const navEntries = useMemo(() => getAccessibleNavEntries(u), [u])
+  const paletteShortcut = commandPaletteShortcutLabel()
 
   useEffect(() => {
     if (!canReadSales) {
@@ -72,94 +83,31 @@ export function BoShell({ children }: { children: ReactNode }) {
           </Link>
           <span className="shell-sub">Back office</span>
         </div>
+        <div className="shell-sidebar-search">
+          <button
+            type="button"
+            className="shell-search-trigger"
+            onClick={openCommandPalette}
+            aria-label={`Search sections (${paletteShortcut})`}
+          >
+            <IconSearch className="shell-search-trigger-icon" aria-hidden />
+            <span className="shell-search-trigger-label">Search…</span>
+            <kbd className="shell-search-trigger-kbd">{paletteShortcut}</kbd>
+          </button>
+        </div>
         <nav className="shell-nav" aria-label="Sections">
-          <NavLink to="/" end className={navCls}>
-            Dashboard
-          </NavLink>
-          {hasPermission(u, 'catalog.read') ? (
-            <>
-              <NavLink to="/products" className={navCls}>
-                Products
+          {navEntries.map((entry) => {
+            const badge =
+              entry.id === 'offline-conflicts' && openOfflineConflictCount > 0
+                ? ` (${openOfflineConflictCount})`
+                : ''
+            return (
+              <NavLink key={entry.id} to={entry.path} end={entry.end} className={navCls}>
+                {entry.title}
+                {badge}
               </NavLink>
-              <NavLink to="/label-settings" className={navCls}>
-                Label settings
-              </NavLink>
-            </>
-          ) : null}
-          {hasPermission(u, 'suppliers.read') ? (
-            <NavLink to="/suppliers" className={navCls}>
-              Suppliers
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'users.manage') ? (
-            <>
-              <NavLink to="/users" className={navCls}>
-                Users
-              </NavLink>
-              <NavLink to="/roles" className={navCls}>
-                Roles
-              </NavLink>
-            </>
-          ) : null}
-          {hasPermission(u, 'financials.read') ? (
-            <NavLink to="/financials" className={navCls}>
-              Financials
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'sales.read') ? (
-            <NavLink to="/sales" className={navCls}>
-              Sales / receipts
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'sales.read') ? (
-            <NavLink to="/offline-conflicts" className={navCls}>
-              Offline conflicts{openOfflineConflictCount > 0 ? ` (${openOfflineConflictCount})` : ''}
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'shifts.read') ? (
-            <NavLink to="/shifts" className={navCls}>
-              Shifts / Z reports
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'migration.access') ? (
-            <>
-              <NavLink to="/audit" className={navCls}>
-                Migration Audit
-              </NavLink>
-              <NavLink to="/cleanup" className={navCls}>
-                Data Cleanup
-              </NavLink>
-              <NavLink to="/store-backup" className={navCls}>
-                Store backup
-              </NavLink>
-              <NavLink to="/catalog-migration" className={navCls}>
-                Catalog migration
-              </NavLink>
-            </>
-          ) : null}
-          {hasPermission(u, 'settings.read') || hasPermission(u, 'settings.write') ? (
-            <NavLink to="/store-settings" className={navCls}>
-              Store settings
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'laybys.admin') ? (
-            <NavLink to="/lay-bys" className={navCls}>
-              Lay-bys
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'store_credit.access') ? (
-            <NavLink to="/store-voucher" className={navCls}>
-              Store vouchers
-            </NavLink>
-          ) : null}
-          {hasPermission(u, 'house_accounts.access') ? (
-            <NavLink to="/house-accounts" className={navCls}>
-              House accounts
-            </NavLink>
-          ) : null}
-          <NavLink to="/settings" className={navCls}>
-            Settings
-          </NavLink>
+            )
+          })}
         </nav>
         <div className="shell-sidebar-footer">
           {session ? (
@@ -212,6 +160,7 @@ export function BoShell({ children }: { children: ReactNode }) {
           <div className="shell-main-scroll">{shellBody}</div>
         </main>
       </div>
+      <CommandPalette open={commandPaletteOpen} onClose={closeCommandPalette} user={u} />
     </div>
   )
 }

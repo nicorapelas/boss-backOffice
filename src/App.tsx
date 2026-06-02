@@ -17,6 +17,7 @@ import { Products } from './pages/Products'
 import { SuppliersPage } from './pages/Suppliers'
 import { StoreSettingsPage } from './pages/StoreSettings'
 import { StoreVoucherPage } from './pages/StoreVoucher'
+import { LoyaltyPage } from './pages/Loyalty'
 import { RolesPage } from './pages/Roles'
 import { ShiftsPage } from './pages/Shifts'
 import { SalesReceiptsPage } from './pages/SalesReceipts'
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/store-settings" element={<StoreSettingsPage />} />
             <Route path="/lay-bys" element={<LayBysPage />} />
             <Route path="/store-voucher" element={<StoreVoucherPage />} />
+            <Route path="/loyalty" element={<LoyaltyPage />} />
             <Route path="/house-accounts" element={<HouseAccountsPage />} />
             <Route path="/settings" element={<BoSettingsPage />} />
           </Route>

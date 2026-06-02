@@ -5,6 +5,19 @@ import type { BackOfficeUser, BoRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
+import { collectUsedBadgeCodes, generateUniqueBadgeCode, BADGE_CODE_LENGTH } from '../users/badgeCodeGenerator'
+
+function badgeSectionDefaultOpen(hasBadge: boolean): boolean {
+  return !hasBadge
+}
+
+function BadgeSectionToggle({ open, onClick }: { open: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className="btn ghost btn small user-section-toggle" onClick={onClick}>
+      {open ? 'Hide' : 'Show'}
+    </button>
+  )
+}
 
 export function UsersPage() {
   const { session } = useAuth()
@@ -18,6 +31,8 @@ export function UsersPage() {
   const [profileDraft, setProfileDraft] = useState<Record<string, { email: string; displayName: string }>>(
     {},
   )
+  const [badgeSectionOpen, setBadgeSectionOpen] = useState<Record<string, boolean>>({})
+  const [createBadgeVisible, setCreateBadgeVisible] = useState(false)
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -27,6 +42,32 @@ export function UsersPage() {
     allowOfflineLogin: false,
     allowShopAssistCatalogAdjustment: false,
   })
+
+  function isBadgeSectionOpen(userId: string, hasBadge: boolean): boolean {
+    if (userId in badgeSectionOpen) return badgeSectionOpen[userId]
+    return badgeSectionDefaultOpen(hasBadge)
+  }
+
+  function toggleBadgeSection(userId: string, hasBadge: boolean) {
+    setBadgeSectionOpen((prev) => ({
+      ...prev,
+      [userId]: !isBadgeSectionOpen(userId, hasBadge),
+    }))
+  }
+
+  function generateCreateBadgeCode() {
+    setError(null)
+    try {
+      const used = collectUsedBadgeCodes(users)
+      const draft = newUser.badgeCode.trim()
+      if (draft) used.add(draft.toUpperCase())
+      const badgeCode = generateUniqueBadgeCode(used)
+      setNewUser((p) => ({ ...p, badgeCode }))
+      setCreateBadgeVisible(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate badge code')
+    }
+  }
 
   async function load() {
     if (!canManage) return
@@ -128,6 +169,7 @@ export function UsersPage() {
         allowOfflineLogin: false,
         allowShopAssistCatalogAdjustment: false,
       })
+      setCreateBadgeVisible(false)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create user')
@@ -204,14 +246,54 @@ export function UsersPage() {
                   />
                 </label>
                 <label className="user-field user-field--half">
-                  Badge code
-                  <input
-                    type="text"
-                    value={newUser.badgeCode}
-                    onChange={(e) => setNewUser((p) => ({ ...p, badgeCode: e.target.value }))}
-                    placeholder="e.g. STAFF-1007"
-                    autoComplete="off"
-                  />
+                  <span className="user-field-label-row">
+                    <span>Badge code</span>
+                    <BadgeSectionToggle
+                      open={createBadgeVisible}
+                      onClick={() => setCreateBadgeVisible((v) => !v)}
+                    />
+                  </span>
+                  {createBadgeVisible ? (
+                    <div className="user-badge-field">
+                      <div className="user-badge-input-row">
+                        <input
+                          type="text"
+                          value={newUser.badgeCode}
+                          onChange={(e) => setNewUser((p) => ({ ...p, badgeCode: e.target.value }))}
+                          placeholder={`${BADGE_CODE_LENGTH}-character code`}
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          className="btn ghost btn small"
+                          onClick={generateCreateBadgeCode}
+                          disabled={busy}
+                          title={`Generate a unique ${BADGE_CODE_LENGTH}-character badge not used by another user`}
+                        >
+                          Generate
+                        </button>
+                      </div>
+                      <p className="muted user-badge-generate-hint">
+                        Optional. Generates a random {BADGE_CODE_LENGTH}-character code (mixed letters and numbers) for POS badge login.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="user-badge-field">
+                      {newUser.badgeCode.trim() ? (
+                        <span className="muted user-field-hidden-hint">Badge entered (hidden)</span>
+                      ) : (
+                        <span className="muted user-field-hidden-hint">Hidden — show to enter a POS badge</span>
+                      )}
+                      <button
+                        type="button"
+                        className="btn ghost btn small user-badge-generate-standalone"
+                        onClick={generateCreateBadgeCode}
+                        disabled={busy}
+                      >
+                        Generate unique badge
+                      </button>
+                    </div>
+                  )}
                 </label>
                 <label className="user-field user-field--half">
                   Role
@@ -380,26 +462,39 @@ export function UsersPage() {
                     </section>
 
                     <section className="user-card-block">
-                      <h4>Badge Code</h4>
-                      <form
-                        className="inline-password"
-                        onSubmit={(e) => {
-                          e.preventDefault()
-                          void patchUser(u._id, { badgeCode: badgeDraft[u._id] ?? '' })
-                        }}
-                      >
-                        <input
-                          type="text"
-                          placeholder="e.g. STAFF-1007"
-                          value={badgeDraft[u._id] ?? ''}
-                          onChange={(e) =>
-                            setBadgeDraft((d) => ({ ...d, [u._id]: e.target.value }))
-                          }
+                      <div className="user-card-block-header">
+                        <h4>Badge Code</h4>
+                        <BadgeSectionToggle
+                          open={isBadgeSectionOpen(u._id, !!(badgeDraft[u._id] ?? u.badgeCode)?.trim())}
+                          onClick={() => toggleBadgeSection(u._id, !!(badgeDraft[u._id] ?? u.badgeCode)?.trim())}
                         />
-                        <button type="submit" className="btn small">
-                          Save
-                        </button>
-                      </form>
+                      </div>
+                      {isBadgeSectionOpen(u._id, !!(badgeDraft[u._id] ?? u.badgeCode)?.trim()) ? (
+                        <form
+                          className="inline-password"
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            void patchUser(u._id, { badgeCode: badgeDraft[u._id] ?? '' })
+                          }}
+                        >
+                          <input
+                            type="text"
+                            placeholder={`${BADGE_CODE_LENGTH}-character code`}
+                            value={badgeDraft[u._id] ?? ''}
+                            onChange={(e) =>
+                              setBadgeDraft((d) => ({ ...d, [u._id]: e.target.value }))
+                            }
+                            autoComplete="off"
+                          />
+                          <button type="submit" className="btn small">
+                            Save
+                          </button>
+                        </form>
+                      ) : (badgeDraft[u._id] ?? u.badgeCode)?.trim() ? (
+                        <p className="muted user-field-hidden-hint">POS badge is set (hidden)</p>
+                      ) : (
+                        <p className="muted user-field-hidden-hint">No badge — show to add one</p>
+                      )}
                     </section>
 
                     <section className="user-card-block">
