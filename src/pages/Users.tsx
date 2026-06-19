@@ -1,11 +1,17 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import type { BackOfficeUser, BoRole } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
+import { FaceEnrollmentPanel } from '../components/FaceEnrollmentPanel'
+import { UserHrProfilePanel } from '../components/UserHrProfilePanel'
+import { UserScoreCardPanel } from '../components/UserScoreCardPanel'
+import { STAFF_FACE_ENROLLMENT_CONSENT_VERSION } from '../components/StaffFaceConsentModal'
 import { BoShell } from '../layouts/BoShell'
+import { readLabelSettings } from '../labels/labelSettings'
 import { collectUsedBadgeCodes, generateUniqueBadgeCode, BADGE_CODE_LENGTH } from '../users/badgeCodeGenerator'
+import { filterUsersBySearch } from '../users/userSearch'
 
 function badgeSectionDefaultOpen(hasBadge: boolean): boolean {
   return !hasBadge
@@ -25,7 +31,9 @@ export function UsersPage() {
   const [users, setUsers] = useState<BackOfficeUser[]>([])
   const [roles, setRoles] = useState<BoRole[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [badgePrintBusyId, setBadgePrintBusyId] = useState<string | null>(null)
   const [passwordDraft, setPasswordDraft] = useState<Record<string, string>>({})
   const [badgeDraft, setBadgeDraft] = useState<Record<string, string>>({})
   const [profileDraft, setProfileDraft] = useState<Record<string, { email: string; displayName: string }>>(
@@ -33,6 +41,7 @@ export function UsersPage() {
   )
   const [badgeSectionOpen, setBadgeSectionOpen] = useState<Record<string, boolean>>({})
   const [createBadgeVisible, setCreateBadgeVisible] = useState(false)
+  const [userSearch, setUserSearch] = useState('')
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -119,6 +128,25 @@ export function UsersPage() {
     }
   }
 
+  async function enrollUserFace(id: string, samples: number[][]) {
+    setError(null)
+    await apiFetch(`/users/${id}/face-enrollment`, {
+      method: 'POST',
+      body: JSON.stringify({
+        samples,
+        staffConsent: true,
+        consentVersion: STAFF_FACE_ENROLLMENT_CONSENT_VERSION,
+      }),
+    })
+    await load()
+  }
+
+  async function removeUserFace(id: string) {
+    setError(null)
+    await apiFetch(`/users/${id}/face-enrollment`, { method: 'DELETE' })
+    await load()
+  }
+
   async function setPassword(e: FormEvent, user: BackOfficeUser) {
     e.preventDefault()
     const password = passwordDraft[user._id]?.trim()
@@ -176,6 +204,49 @@ export function UsersPage() {
     }
   }
 
+  async function printUserBadge(user: BackOfficeUser) {
+    const badgeCode = user.badgeCode?.trim()
+    if (!badgeCode) {
+      setError('Save a badge code before printing')
+      setNotice(null)
+      return
+    }
+    if (!window.electronBo?.printStaffBadge) {
+      setError('Badge printing is available in the desktop app only')
+      setNotice(null)
+      return
+    }
+    setBadgePrintBusyId(user._id)
+    setError(null)
+    setNotice(null)
+    try {
+      const settings = readLabelSettings()
+      const result = await window.electronBo.printStaffBadge(
+        settings.transport,
+        {
+          badgeCode,
+          displayName: user.displayName?.trim() || user.email,
+          roleName: user.roleName || user.role,
+        },
+        { layout: settings.layout, copies: 1 },
+      )
+      if (!result.ok) {
+        setError(result.error ?? 'Badge print failed')
+        return
+      }
+      setNotice(`Badge sent to printer for ${user.displayName?.trim() || user.email}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Badge print failed')
+    } finally {
+      setBadgePrintBusyId(null)
+    }
+  }
+
+  const filteredUsers = useMemo(
+    () => filterUsersBySearch(users, userSearch),
+    [users, userSearch],
+  )
+
   async function removeUser(user: BackOfficeUser) {
     const label = user.displayName || user.email
     const ok = window.confirm(`Delete user "${label}" permanently? This cannot be undone.`)
@@ -206,6 +277,7 @@ export function UsersPage() {
           </div>
 
           {error && <p className="error">{error}</p>}
+          {notice && <p className="success">{notice}</p>}
 
           <section className="panel user-create-panel">
             <h2>Create User</h2>
@@ -341,8 +413,31 @@ export function UsersPage() {
           </section>
 
           <section className="panel">
+            <div className="users-toolbar">
+              <label className="products-search-field users-search-field">
+                Search users
+                <input
+                  type="search"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Name, email, role, phone, badge…"
+                  autoComplete="off"
+                  enterKeyHint="search"
+                />
+              </label>
+              {userSearch.trim() ? (
+                <button type="button" className="btn ghost small" onClick={() => setUserSearch('')}>
+                  Clear
+                </button>
+              ) : null}
+              {users.length > 0 && userSearch.trim() ? (
+                <p className="muted products-search-meta users-search-meta">
+                  {filteredUsers.length} of {users.length} shown
+                </p>
+              ) : null}
+            </div>
             <div className="users-list">
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <article key={u._id} className="user-card">
                   <header className="user-card-header">
                     <div>
@@ -495,6 +590,50 @@ export function UsersPage() {
                       ) : (
                         <p className="muted user-field-hidden-hint">No badge — show to add one</p>
                       )}
+                      {u.badgeCode?.trim() ? (
+                        <div className="user-badge-print-row">
+                          <button
+                            type="button"
+                            className="btn small"
+                            disabled={busy || badgePrintBusyId === u._id}
+                            onClick={() => void printUserBadge(u)}
+                          >
+                            {badgePrintBusyId === u._id ? 'Printing…' : 'Print badge'}
+                          </button>
+                          <p className="muted user-badge-generate-hint">
+                            Prints name, role, and Code128 barcode to the label printer configured in{' '}
+                            <Link to="/label-settings">Label settings</Link>.
+                          </p>
+                        </div>
+                      ) : null}
+                    </section>
+
+                    <UserScoreCardPanel
+                      userId={u._id}
+                      userLabel={u.displayName || u.email}
+                    />
+
+                    <UserHrProfilePanel
+                      user={u}
+                      busy={busy}
+                      onSave={async (hrProfile) => {
+                        await patchUser(u._id, { hrProfile })
+                      }}
+                      onReload={load}
+                      onError={setError}
+                      onNotice={setNotice}
+                    />
+
+                    <section className="user-card-block">
+                      <h4>Face login (POS)</h4>
+                      <FaceEnrollmentPanel
+                        userLabel={u.displayName || u.email}
+                        hasEnrollment={u.hasFaceEnrollment === true}
+                        consentRecordedAt={u.faceEnrollmentConsentAt}
+                        busy={busy}
+                        onEnroll={(samples) => enrollUserFace(u._id, samples)}
+                        onRemove={() => removeUserFace(u._id)}
+                      />
                     </section>
 
                     <section className="user-card-block">
@@ -527,6 +666,9 @@ export function UsersPage() {
                 </article>
               ))}
             </div>
+            {users.length > 0 && filteredUsers.length === 0 ? (
+              <p className="muted users-search-empty">No users match your search.</p>
+            ) : null}
           </section>
         </>
       )}

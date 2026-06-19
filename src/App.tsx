@@ -24,6 +24,7 @@ import { SalesReceiptsPage } from './pages/SalesReceipts'
 import { OfflineConflictsPage } from './pages/OfflineConflicts'
 import { UsersPage } from './pages/Users'
 import { BoSettingsPage } from './pages/BoSettings'
+import { PosTerminalsPage } from './pages/PosTerminals'
 import './App.css'
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/pos-terminals" element={<PosTerminalsPage />} />
             <Route path="/roles" element={<RolesPage />} />
             <Route path="/financials" element={<FinancialsPage />} />
             <Route path="/sales" element={<SalesReceiptsPage />} />

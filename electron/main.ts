@@ -6,6 +6,7 @@ import { registerAuthIpc } from './auth-storage'
 import {
   buildLabelFontTestTspl,
   buildProductLabelTspl,
+  buildStaffBadgeTspl,
   sendRawToPrinter,
   type LabelPrintPresetId,
   type LabelPrinterTransport,
@@ -50,6 +51,23 @@ ipcMain.handle('app:minimize', (event) => {
   if (w && !w.isDestroyed()) w.minimize()
 })
 
+ipcMain.handle('app:toggle-maximize', (event) => {
+  const w = BrowserWindow.fromWebContents(event.sender)
+  if (!w || w.isDestroyed()) return false
+  if (w.isMaximized()) {
+    w.unmaximize()
+    return false
+  }
+  w.maximize()
+  return true
+})
+
+ipcMain.handle('app:is-maximized', (event) => {
+  const w = BrowserWindow.fromWebContents(event.sender)
+  if (!w || w.isDestroyed()) return false
+  return w.isMaximized()
+})
+
 async function detectUsbTransport(): Promise<{
   transport?: LabelPrinterTransport
   candidates: string[]
@@ -86,7 +104,7 @@ async function detectUsbTransport(): Promise<{
   return {
     candidates,
     error: candidates.length
-      ? 'Found USB printer devices, but none are writable (check permissions).'
+      ? `Found USB printer devices, but none are writable. On Linux, add your user to the lp group (sudo usermod -aG lp $USER), then sign out and back in. Candidates: ${candidates.join(', ')}`
       : 'No USB printer device found under /dev/usb/lp* or /dev/lp*.',
   }
 }
@@ -221,6 +239,48 @@ ipcMain.handle(
   },
 )
 
+function parseStaffBadge(raw: unknown): { displayName: string; badgeCode: string; roleName?: string } | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (typeof r.badgeCode !== 'string' || !r.badgeCode.trim()) return null
+  const displayName = typeof r.displayName === 'string' ? r.displayName.trim() : ''
+  const roleName = typeof r.roleName === 'string' && r.roleName.trim() ? r.roleName.trim() : undefined
+  return {
+    badgeCode: r.badgeCode.trim(),
+    displayName: displayName || 'Staff',
+    roleName,
+  }
+}
+
+ipcMain.handle(
+  'bo:label:print-staff-badge',
+  async (
+    _evt,
+    args:
+      | {
+          transport: unknown
+          badge: unknown
+          copies?: unknown
+          layout?: unknown
+        }
+      | undefined,
+  ) => {
+    try {
+      const transport = parseTransport(args?.transport)
+      if (!transport) return { ok: false, error: 'Invalid label printer transport' }
+      const badge = parseStaffBadge(args?.badge)
+      if (!badge) return { ok: false, error: 'Invalid staff badge payload' }
+      const copies = typeof args?.copies === 'number' && Number.isFinite(args.copies) ? args.copies : 1
+      const layout = parseLayout(args?.layout)
+      const bytes = buildStaffBadgeTspl(badge, { copies, layout })
+      await sendRawToPrinter(transport, bytes)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Staff badge print failed' }
+    }
+  },
+)
+
 ipcMain.handle(
   'bo:label:print-font-test',
   async (
@@ -282,12 +342,18 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 560,
-    fullscreen: true,
     icon: path.join(process.env.APP_ROOT, 'src/assets/logo-text_bottom1-dark.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
     ...browserShellWindowOptions(),
+  })
+
+  win.on('maximize', () => {
+    if (!win?.isDestroyed()) win.webContents.send('app:maximized-changed', true)
+  })
+  win.on('unmaximize', () => {
+    if (!win?.isDestroyed()) win.webContents.send('app:maximized-changed', false)
   })
 
   win.webContents.on('did-finish-load', () => {

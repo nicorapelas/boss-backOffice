@@ -1,10 +1,12 @@
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useId,
   useMemo,
   useRef,
   useState,
+  startTransition,
   type FormEvent,
 } from 'react'
 import {
@@ -19,6 +21,7 @@ import type { Product, ProductPresetsState, StockAdjustmentRow, Supplier, Suppli
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import { BoShell } from '../layouts/BoShell'
+import { ProductsVirtualTable } from '../components/ProductsVirtualTable'
 import {
   assignPresetEntry,
   PRESET_ENTRY_MAX,
@@ -113,6 +116,24 @@ function stockAdjustmentUserLabel(row: StockAdjustmentRow): string {
   return row.changedByDisplayName?.trim() || row.changedByEmail
 }
 
+type LabelPrintTarget = {
+  key: string
+  name: string
+  sku: string
+  barcode?: string | null
+  price: number
+}
+
+function labelPrintTargetFromProduct(product: Product): LabelPrintTarget {
+  return {
+    key: product._id,
+    name: product.name,
+    sku: product.sku,
+    barcode: product.barcode,
+    price: product.price,
+  }
+}
+
 export function Products() {
   const { session } = useAuth()
   const canRead = hasPermission(session?.user, 'catalog.read')
@@ -123,6 +144,7 @@ export function Products() {
   const canPresetsRead =
     hasPermission(session?.user, 'presets.read') || hasPermission(session?.user, 'presets.write')
   const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [catalogPushBusy, setCatalogPushBusy] = useState(false)
   const [catalogPushNotice, setCatalogPushNotice] = useState<string | null>(null)
@@ -131,6 +153,7 @@ export function Products() {
 
   const [createName, setCreateName] = useState('')
   const [createSku, setCreateSku] = useState('')
+  const [createBarcode, setCreateBarcode] = useState('')
   const [createCategory, setCreateCategory] = useState('')
   const [createSubCategory, setCreateSubCategory] = useState('')
   const [createSkuManuallyEdited, setCreateSkuManuallyEdited] = useState(false)
@@ -147,6 +170,7 @@ export function Products() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [editName, setEditName] = useState('')
   const [editSku, setEditSku] = useState('')
+  const [editBarcode, setEditBarcode] = useState('')
   const [editCategory, setEditCategory] = useState('')
   const [editSubCategory, setEditSubCategory] = useState('')
   const [editPrice, setEditPrice] = useState('')
@@ -172,11 +196,13 @@ export function Products() {
   const [presetReplaceIndex, setPresetReplaceIndex] = useState(-1)
 
   const [productSearch, setProductSearch] = useState('')
+  const deferredProductSearch = useDeferredValue(productSearch)
+  const isSearchFiltering = productSearch !== deferredProductSearch
   const [categoryFilter, setCategoryFilter] = useState('__all__')
   const [labelSettings, setLabelSettings] = useState<LabelPrinterSettings>(() => readLabelSettings())
   const [labelBusyProductId, setLabelBusyProductId] = useState<string | null>(null)
   const [labelNotice, setLabelNotice] = useState<string | null>(null)
-  const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null)
+  const [printLabelTarget, setPrintLabelTarget] = useState<LabelPrintTarget | null>(null)
   const [printLabelCopies, setPrintLabelCopies] = useState('1')
 
   const presetCatDatalistId = useId()
@@ -241,11 +267,16 @@ export function Products() {
 
   const load = useCallback(async () => {
     setError(null)
+    setProductsLoading(true)
     try {
       const list = await apiFetch<Product[]>('/products')
-      setProducts(list)
+      startTransition(() => {
+        setProducts(list)
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
+    } finally {
+      setProductsLoading(false)
     }
   }, [])
 
@@ -318,6 +349,7 @@ export function Products() {
     setEditing(null)
     setEditName('')
     setEditSku('')
+    setEditBarcode('')
     setEditCategory('')
     setEditSubCategory('')
     setEditPrice('')
@@ -448,7 +480,7 @@ export function Products() {
   )
 
   const filteredProducts = useMemo(() => {
-    const q = productSearch.trim().toLowerCase()
+    const q = deferredProductSearch.trim().toLowerCase()
     return products.filter((p) => {
       const category = p.category?.trim() || 'Uncategorized'
       const categoryOk = categoryFilter === '__all__' || category === categoryFilter
@@ -458,11 +490,12 @@ export function Products() {
       return (
         p.name.toLowerCase().includes(q) ||
         p.sku.toLowerCase().includes(q) ||
+        (p.barcode?.trim() ?? '').toLowerCase().includes(q) ||
         category.toLowerCase().includes(q) ||
         sub.includes(q)
       )
     })
-  }, [products, productSearch, categoryFilter])
+  }, [products, deferredProductSearch, categoryFilter])
 
   const nextSequentialSku = useMemo(() => {
     let maxSku = 0
@@ -481,29 +514,48 @@ export function Products() {
     setCreateSku(nextSequentialSku)
   }, [canWrite, createSkuManuallyEdited, nextSequentialSku])
 
-  function startEdit(p: Product) {
-    setEditing(p)
-    setEditName(p.name)
-    setEditSku(p.sku)
-    setEditCategory(p.category ?? '')
-    setEditSubCategory(p.subCategory ?? '')
-    setEditPrice(String(p.price))
-    setEditStock(String(p.stock))
-    setEditTrackInventory(p.trackInventory !== false)
-    setEditVolumeTiering(Boolean(p.volumeTieringEnabled && p.volumeTiers?.length))
-    setEditTierRows(productToTierDrafts(p))
-    setEditSupplierId('')
-    const jl = p.jobCardLabourPerUnit
-    setEditJobCardLabour(jl != null && jl > 0.0001 ? String(jl) : '')
-    if (canSuppliersRead) {
-      void apiFetch<SupplierOffer[]>(`/suppliers/offers/by-product?${new URLSearchParams({ productId: p._id })}`)
-        .then((rows) => {
-          const preferred = rows.find((o) => o.preferred)
-          setEditSupplierId(preferred ? offerSupplierId(preferred) : '')
-        })
-        .catch(() => setEditSupplierId(''))
-    }
-  }
+  const handleEditProduct = useCallback(
+    (p: Product) => {
+      setEditing(p)
+      setEditName(p.name)
+      setEditSku(p.sku)
+      setEditBarcode(p.barcode?.trim() ?? '')
+      setEditCategory(p.category ?? '')
+      setEditSubCategory(p.subCategory ?? '')
+      setEditPrice(String(p.price))
+      setEditStock(String(p.stock))
+      setEditTrackInventory(p.trackInventory !== false)
+      setEditVolumeTiering(Boolean(p.volumeTieringEnabled && p.volumeTiers?.length))
+      setEditTierRows(productToTierDrafts(p))
+      setEditSupplierId('')
+      const jl = p.jobCardLabourPerUnit
+      setEditJobCardLabour(jl != null && jl > 0.0001 ? String(jl) : '')
+      if (canSuppliersRead) {
+        void apiFetch<SupplierOffer[]>(`/suppliers/offers/by-product?${new URLSearchParams({ productId: p._id })}`)
+          .then((rows) => {
+            const preferred = rows.find((o) => o.preferred)
+            setEditSupplierId(preferred ? offerSupplierId(preferred) : '')
+          })
+          .catch(() => setEditSupplierId(''))
+      }
+    },
+    [canSuppliersRead],
+  )
+
+  const handleDeleteProduct = useCallback(
+    async (id: string) => {
+      if (!canWrite) return
+      if (!confirm('Delete this product?')) return
+      setError(null)
+      try {
+        await apiFetch(`/products/${id}`, { method: 'DELETE' })
+        await load()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Delete failed')
+      }
+    },
+    [canWrite, load],
+  )
 
   async function handleRemoveEditPhoto() {
     if (!editing) return
@@ -538,6 +590,7 @@ export function Products() {
   function resetCreateForm() {
     setCreateName('')
     setCreateSku('')
+    setCreateBarcode('')
     setCreateCategory('')
     setCreateSubCategory('')
     setCreateSkuManuallyEdited(false)
@@ -597,6 +650,7 @@ export function Products() {
         body: JSON.stringify({
           name: createName,
           sku: createSku,
+          barcode: createBarcode.trim() || null,
           category: catCreate,
           subCategory: catCreate ? createSubCategory.trim() || null : null,
           price: Number(createPrice),
@@ -649,6 +703,7 @@ export function Products() {
         body: JSON.stringify({
           name: editName,
           sku: editSku,
+          barcode: editBarcode.trim() || null,
           category: catEdit,
           subCategory: catEdit ? editSubCategory.trim() || null : null,
           price: Number(editPrice),
@@ -677,35 +732,23 @@ export function Products() {
     }
   }
 
-  async function onDelete(id: string) {
-    if (!canWrite) return
-    if (!confirm('Delete this product?')) return
-    setError(null)
-    try {
-      await apiFetch(`/products/${id}`, { method: 'DELETE' })
-      await load()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed')
-    }
-  }
-
-  async function printLabelWithCopies(product: Product, copies: number): Promise<boolean> {
+  async function printLabelWithCopies(target: LabelPrintTarget, copies: number): Promise<boolean> {
     setLabelNotice(null)
     setError(null)
     if (!window.electronBo) {
       setError('Label printing is available in the desktop app only.')
       return false
     }
-    setLabelBusyProductId(product._id)
+    setLabelBusyProductId(target.key)
     try {
-      const barcodeValue = (product.barcode ?? '').trim() || product.sku
+      const barcodeValue = (target.barcode ?? '').trim() || target.sku
       const result = await window.electronBo.printProductLabel(
         labelSettings.transport,
         {
-          name: product.name,
-          sku: product.sku,
+          name: target.name,
+          sku: target.sku,
           barcodeValue,
-          price: product.price,
+          price: target.price,
         },
         {
           copies,
@@ -719,7 +762,7 @@ export function Products() {
         setError(result.error ?? 'Label print failed')
         return false
       }
-      setLabelNotice(copies > 1 ? `Sent ${copies} labels: ${product.name}` : `Label sent: ${product.name}`)
+      setLabelNotice(copies > 1 ? `Sent ${copies} labels: ${target.name}` : `Label sent: ${target.name}`)
       return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Label print failed')
@@ -729,27 +772,55 @@ export function Products() {
     }
   }
 
-  function openPrintLabelModal(product: Product) {
-    setPrintLabelProduct(product)
+  function openPrintLabelModal(target: LabelPrintTarget) {
+    setPrintLabelTarget(target)
     setPrintLabelCopies(String(Math.max(1, Math.min(100, Math.floor(labelSettings.copies || 1)))))
   }
 
+  const handlePrintLabel = useCallback(
+    (product: Product) => {
+      setPrintLabelTarget(labelPrintTargetFromProduct(product))
+      setPrintLabelCopies(String(Math.max(1, Math.min(100, Math.floor(labelSettings.copies || 1)))))
+    },
+    [labelSettings.copies],
+  )
+
   function closePrintLabelModal() {
-    setPrintLabelProduct(null)
+    setPrintLabelTarget(null)
     setPrintLabelCopies('1')
+  }
+
+  function labelPrintTargetFromCreateDraft(): LabelPrintTarget | null {
+    const name = createName.trim()
+    const sku = createSku.trim()
+    const price = Number(createPrice)
+    if (!name || !sku || !Number.isFinite(price) || price < 0) return null
+    return {
+      key: '__create__',
+      name,
+      sku,
+      barcode: createBarcode.trim() || null,
+      price,
+    }
+  }
+
+  function openPrintCreateLabel() {
+    const target = labelPrintTargetFromCreateDraft()
+    if (!target) {
+      setError('Enter name, SKU, and a valid price before printing labels.')
+      return
+    }
+    setError(null)
+    openPrintLabelModal(target)
   }
 
   async function submitPrintLabelCopies(e: FormEvent) {
     e.preventDefault()
-    if (!printLabelProduct) return
+    if (!printLabelTarget) return
     const copies = Math.max(1, Math.min(100, Math.floor(Number(printLabelCopies) || 1)))
     setPrintLabelCopies(String(copies))
-    const ok = await printLabelWithCopies(printLabelProduct, copies)
+    const ok = await printLabelWithCopies(printLabelTarget, copies)
     if (ok) closePrintLabelModal()
-  }
-
-  function printLabel(product: Product) {
-    openPrintLabelModal(product)
   }
 
   async function printTestLabel() {
@@ -833,6 +904,7 @@ export function Products() {
         ...editing,
         name: editName,
         sku: editSku,
+        barcode: editBarcode.trim() || null,
         category: catPreset,
         subCategory: catPreset ? editSubCategory.trim() || null : null,
         price: Number(editPrice),
@@ -924,6 +996,19 @@ export function Products() {
                 }}
                 required
               />
+            </label>
+            <label className="product-field product-field--barcode">
+              Barcode
+              <input
+                value={createBarcode}
+                onChange={(e) => setCreateBarcode(e.target.value)}
+                placeholder="EAN / UPC (optional)"
+                autoComplete="off"
+                inputMode="numeric"
+              />
+              <span className="muted help-note">
+                Manufacturer scan code when different from SKU. Leave blank to print SKU on labels.
+              </span>
             </label>
             <label className="product-field product-field--half">
               Category
@@ -1130,6 +1215,14 @@ export function Products() {
             </div>
           ) : null}
           <div className="form-actions">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => openPrintCreateLabel()}
+              disabled={labelBusyProductId === '__create__'}
+            >
+              {labelBusyProductId === '__create__' ? 'Printing…' : 'Print labels'}
+            </button>
             <button type="submit" className="btn primary">
               Create
             </button>
@@ -1173,7 +1266,7 @@ export function Products() {
               type="search"
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
-              placeholder="Filter by name, SKU, category, or sub-category…"
+              placeholder="Filter by name, SKU, barcode, category, or sub-category…"
               autoComplete="off"
               enterKeyHint="search"
             />
@@ -1189,9 +1282,17 @@ export function Products() {
               ))}
             </select>
           </label>
-          {products.length > 0 && productSearch.trim() ? (
+          {productsLoading ? (
+            <p className="muted products-search-meta">Loading catalog…</p>
+          ) : products.length > 0 && (productSearch.trim() || isSearchFiltering) ? (
             <p className="muted products-search-meta">
-              {filteredProducts.length} of {products.length} shown
+              {isSearchFiltering ? 'Filtering… · ' : ''}
+              {filteredProducts.length.toLocaleString()} of {products.length.toLocaleString()} shown
+            </p>
+          ) : products.length > 0 ? (
+            <p className="muted products-search-meta">
+              {filteredProducts.length.toLocaleString()} products
+              {categoryFilter !== '__all__' ? ' in category' : ''}
             </p>
           ) : null}
           <details className="products-label-settings">
@@ -1363,65 +1464,27 @@ export function Products() {
             </div>
           </section>
         ) : null}
-        <div className="bo-table-responsive">
-        <table className="table products-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>SKU</th>
-              <th>Category</th>
-              <th>Sub-category</th>
-              <th>Price</th>
-              <th>Stock</th>
-              <th>Inv.</th>
-              {canWrite && <th />}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProducts.map((p) => (
-              <tr key={p._id}>
-                <td>{p.name}</td>
-                <td>{p.sku}</td>
-                <td>{p.category?.trim() || 'Uncategorized'}</td>
-                <td>{p.subCategory?.trim() || '—'}</td>
-                <td>{p.price.toFixed(2)}</td>
-                <td>{p.trackInventory === false ? '—' : p.stock}</td>
-                <td>{p.trackInventory === false ? 'No' : 'Yes'}</td>
-                {canWrite && (
-                  <td className="actions-cell">
-                    <button type="button" className="btn small" onClick={() => startEdit(p)}>
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="btn small"
-                      onClick={() => void printLabel(p)}
-                      disabled={labelBusyProductId === p._id}
-                    >
-                      {labelBusyProductId === p._id ? 'Printing…' : 'Print label'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn small"
-                      onClick={() => void onDelete(p._id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-        {products.length === 0 && <p className="muted">No products yet.</p>}
-        {products.length > 0 && filteredProducts.length === 0 && (
+        {productsLoading ? (
+          <p className="muted products-table-loading">Loading products…</p>
+        ) : filteredProducts.length > 0 ? (
+          <ProductsVirtualTable
+            products={filteredProducts}
+            filterKey={`${deferredProductSearch}\0${categoryFilter}`}
+            canWrite={canWrite}
+            labelBusyProductId={labelBusyProductId}
+            onEdit={handleEditProduct}
+            onPrintLabel={handlePrintLabel}
+            onDelete={(id) => void handleDeleteProduct(id)}
+          />
+        ) : null}
+        {!productsLoading && products.length === 0 && <p className="muted">No products yet.</p>}
+        {!productsLoading && products.length > 0 && filteredProducts.length === 0 && (
           <p className="muted">No products match your search.</p>
         )}
       </div>
       ) : null}
 
-      {canWrite && printLabelProduct && (
+      {canWrite && printLabelTarget && (
         <div
           className="modal-backdrop"
           role="presentation"
@@ -1439,7 +1502,7 @@ export function Products() {
             <form onSubmit={submitPrintLabelCopies}>
               <h2 id="print-label-title">Print label</h2>
               <p className="muted modal-subtitle">
-                {printLabelProduct.name} <span className="muted">({printLabelProduct.sku})</span>
+                {printLabelTarget.name} <span className="muted">({printLabelTarget.sku})</span>
               </p>
               <div className="inline-form">
                 <label>
@@ -1506,6 +1569,19 @@ export function Products() {
                     onChange={(e) => setEditSku(e.target.value)}
                     required
                   />
+                </label>
+                <label className="product-field product-field--barcode">
+                  Barcode
+                  <input
+                    value={editBarcode}
+                    onChange={(e) => setEditBarcode(e.target.value)}
+                    placeholder="EAN / UPC (optional)"
+                    autoComplete="off"
+                    inputMode="numeric"
+                  />
+                  <span className="muted help-note">
+                    Manufacturer scan code when different from SKU. Clear to use SKU on labels only.
+                  </span>
                 </label>
                 <label className="product-field product-field--half">
                   Category

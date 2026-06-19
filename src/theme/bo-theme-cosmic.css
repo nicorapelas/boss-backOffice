@@ -1,0 +1,162 @@
+/* Cosmic — Pop!_OS Cosmic dark palette: charcoal neutrals with cyan accents (aligned with POS Cosmic theme). */
+
+html[data-bo-theme='cosmic'] .shell-sidebar {
+  border-right-color: #484848;
+  background: linear-gradient(180deg, #161616 0%, #262626 55%, #161616 100%);
+}
+
+html[data-bo-theme='cosmic'] .shell-sidebar-brand {
+  border-bottom-color: #484848;
+}
+
+html[data-bo-theme='cosmic'] .shell-sub {
+  color: #9e9e9e;
+}
+
+html[data-bo-theme='cosmic'] .shell-nav-link {
+  color: #dedede;
+}
+
+html[data-bo-theme='cosmic'] .shell-nav-link:hover {
+  color: #ffffff;
+  background: rgba(99, 208, 223, 0.15);
+}
+
+html[data-bo-theme='cosmic'] .shell-nav-link--active {
+  color: #ecfeff;
+  background: rgba(99, 208, 223, 0.25);
+  border-color: #63d0df;
+}
+
+html[data-bo-theme='cosmic'] .shell-sidebar-footer {
+  border-top-color: #484848;
+}
+
+html[data-bo-theme='cosmic'] .shell-user {
+  color: #bebebe;
+}
+
+html[data-bo-theme='cosmic'] .shell-content {
+  background: linear-gradient(155deg, #161616 0%, #262626 38%, #2e2e2e 100%);
+}
+
+html[data-bo-theme='cosmic'] .shell-window-actions {
+  border-bottom-color: rgba(167, 139, 250, 0.35);
+}
+
+html[data-bo-theme='cosmic'] .shell-main {
+  color: #dedede;
+}
+
+html[data-bo-theme='cosmic'] .muted {
+  color: #9e9e9e;
+}
+
+html[data-bo-theme='cosmic'] .panel {
+  background: rgba(38, 38, 38, 0.88);
+  border-color: #484848;
+  box-shadow: 0 2px 0 rgba(139, 92, 246, 0.2);
+}
+
+html[data-bo-theme='cosmic'] .form input,
+html[data-bo-theme='cosmic'] .search,
+html[data-bo-theme='cosmic'] select,
+html[data-bo-theme='cosmic'] .inline-form input,
+html[data-bo-theme='cosmic'] .products-search-field input,
+html[data-bo-theme='cosmic'] .cleanup-input,
+html[data-bo-theme='cosmic'] .inline-password input,
+html[data-bo-theme='cosmic'] .role-editor-display-name input {
+  border-color: #484848;
+  background: #161616;
+  color: #dedede;
+}
+
+html[data-bo-theme='cosmic'] .btn {
+  border-color: #484848;
+  background: rgba(49, 46, 129, 0.85);
+  color: #dedede;
+}
+
+html[data-bo-theme='cosmic'] .btn.primary {
+  background: #92cf9c;
+  border-color: #5edb8c;
+  color: #fff;
+}
+
+html[data-bo-theme='cosmic'] .btn.ghost {
+  background: transparent;
+  border-color: rgba(99, 208, 223, 0.35);
+}
+
+html[data-bo-theme='cosmic'] .product-row {
+  border-color: #63d0df;
+  background: rgba(27, 27, 27, 0.65);
+}
+
+html[data-bo-theme='cosmic'] .table th,
+html[data-bo-theme='cosmic'] .table td {
+  border-bottom-color: #484848;
+}
+
+html[data-bo-theme='cosmic'] .modal-backdrop {
+  background: rgba(15, 23, 42, 0.72);
+}
+
+html[data-bo-theme='cosmic'] .product-edit-presets {
+  border-top-color: #484848;
+}
+
+html[data-bo-theme='cosmic'] .product-edit-preset-row {
+  border-bottom-color: rgba(72, 72, 72, 0.55);
+}
+
+html[data-bo-theme='cosmic'] .products-label-settings {
+  border-color: rgba(72, 185, 199, 0.35);
+}
+
+html[data-bo-theme='cosmic'] .user-card {
+  border-color: #63d0df;
+  background: rgba(38, 38, 38, 0.75);
+}
+
+html[data-bo-theme='cosmic'] .user-card-block {
+  border-color: #484848;
+  background: rgba(22, 22, 22, 0.85);
+}
+
+html[data-bo-theme='cosmic'] .audit-kpi {
+  border-color: #484848;
+  background: rgba(38, 38, 38, 0.75);
+}
+
+html[data-bo-theme='cosmic'] .role-perm-fieldset,
+html[data-bo-theme='cosmic'] .role-card {
+  border-color: #484848;
+  background: rgba(38, 38, 38, 0.75);
+}
+
+html[data-bo-theme='cosmic'] .bo-settings-section {
+  border-color: #484848;
+  background: rgba(22, 22, 22, 0.92);
+}
+
+html[data-bo-theme='cosmic'] .bo-theme-option {
+  border-color: #484848;
+  background: rgba(22, 22, 22, 0.98);
+}
+
+html[data-bo-theme='cosmic'] .bo-theme-option:hover {
+  border-color: #63d0df;
+}
+
+html[data-bo-theme='cosmic'] .bo-theme-option--selected {
+  border-color: #63d0df;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.35);
+  background: rgba(99, 208, 223, 0.2);
+}
+
+@media (max-width: 768px) {
+  html[data-bo-theme='cosmic'] .shell-sidebar {
+    border-bottom-color: #484848;
+  }
+}

@@ -141,6 +141,14 @@ export const BO_NAV_ENTRIES: BoNavEntry[] = [
     permission: { any: ['settings.read', 'settings.write'] },
   },
   {
+    id: 'pos-terminals',
+    title: 'POS terminals',
+    path: '/pos-terminals',
+    category: 'Admin',
+    keywords: ['pos', 'terminal', 'till', 'register', 'ip', 'online', 'connected', 'device'],
+    permission: 'settings.read',
+  },
+  {
     id: 'lay-bys',
     title: 'Lay-bys',
     path: '/lay-bys',

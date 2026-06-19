@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronPlatform', process.platform)
 contextBridge.exposeInMainWorld('electronApp', {
   quit: () => ipcRenderer.invoke('app:quit'),
   minimize: () => ipcRenderer.invoke('app:minimize'),
+  toggleMaximize: () => ipcRenderer.invoke('app:toggle-maximize') as Promise<boolean>,
+  isMaximized: () => ipcRenderer.invoke('app:is-maximized') as Promise<boolean>,
 })
 
 contextBridge.exposeInMainWorld('ipcRenderer', {
@@ -57,6 +59,18 @@ contextBridge.exposeInMainWorld('electronBo', {
     },
   ) =>
     ipcRenderer.invoke('bo:label:print', { transport, label, ...opts }) as Promise<{ ok: boolean; error?: string }>,
+  printStaffBadge: (
+    transport: unknown,
+    badge: { displayName: string; badgeCode: string; roleName?: string },
+    opts?: {
+      copies?: number
+      layout?: { widthMm: number; heightMm: number; gapMm: number }
+    },
+  ) =>
+    ipcRenderer.invoke('bo:label:print-staff-badge', { transport, badge, ...opts }) as Promise<{
+      ok: boolean
+      error?: string
+    }>,
   printLabelFontTest: (
     transport: unknown,
     opts?: {

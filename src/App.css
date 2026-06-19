@@ -915,6 +915,34 @@ html[data-bo-theme='light'] .modal-backdrop {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
+.consent-modal {
+  max-width: 36rem;
+}
+
+.consent-modal-list {
+  margin: 0.75rem 0 1rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.consent-modal-checkbox {
+  margin: 0.5rem 0 1rem;
+  align-items: flex-start;
+}
+
+.consent-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.consent-recorded-note {
+  margin: 0.35rem 0 0;
+}
+
 .modal-subtitle {
   margin: -0.25rem 0 0.75rem;
   font-size: 0.88rem;
@@ -1065,11 +1093,15 @@ html[data-bo-theme='light'] .product-edit-preset-row {
 }
 
 .product-field--name {
-  grid-column: span 8;
+  grid-column: span 6;
 }
 
 .product-field--sku {
-  grid-column: span 4;
+  grid-column: span 3;
+}
+
+.product-field--barcode {
+  grid-column: span 3;
 }
 
 .product-field--half {
@@ -1671,6 +1703,36 @@ html[data-bo-theme='light'] .products-label-settings {
   margin-top: 0.75rem;
 }
 
+.products-table-scroll {
+  overflow: auto;
+  height: min(68vh, 720px);
+  max-height: min(68vh, 720px);
+  min-height: 280px;
+}
+
+.products-table-scroll .products-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bo-panel-bg, #1a1a1a);
+  box-shadow: 0 1px 0 var(--bo-border, #333);
+}
+
+html[data-bo-theme='light'] .products-table-scroll .products-table thead th {
+  background: var(--bo-panel-bg, #e8dcc8);
+  box-shadow: 0 1px 0 var(--bo-border, #d5d5d5);
+}
+
+.products-table-spacer td {
+  padding: 0 !important;
+  border: none !important;
+  line-height: 0;
+}
+
+.products-table-loading {
+  margin-top: 0.75rem;
+}
+
 .bo-table-responsive .products-table {
   width: max-content;
   min-width: 100%;
@@ -1751,6 +1813,29 @@ html[data-bo-theme='light'] select {
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+.users-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.users-search-field {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+  max-width: 28rem;
+}
+
+.users-search-meta {
+  margin: 0;
+  align-self: center;
+}
+
+.users-search-empty {
+  margin: 0.5rem 0 0;
 }
 
 .user-create-panel {
@@ -1893,6 +1978,242 @@ html[data-bo-theme='light'] select {
 
 .user-badge-generate-hint code {
   font-size: 0.92em;
+}
+
+.user-card-block--wide {
+  grid-column: 1 / -1;
+}
+
+.user-hr-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.user-hr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.85rem;
+}
+
+.user-hr-documents {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.user-hr-document {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.user-hr-document-label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.user-hr-file-input {
+  display: none;
+}
+
+.user-hr-document-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.user-hr-document-meta {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.user-hr-loans-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.user-hr-loans-header h5 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.user-hr-loans-empty {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+}
+
+.user-hr-loans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.user-hr-loan-card {
+  padding: 0.55rem 0.65rem;
+  border: 1px dashed #4a4a4a;
+  border-radius: 8px;
+}
+
+.user-hr-loan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.65rem;
+}
+
+.user-hr-loan-grid .user-field--wide {
+  grid-column: 1 / -1;
+}
+
+.user-hr-loan-grid .user-field--full {
+  grid-column: 1 / -1;
+}
+
+.user-hr-loan-remove {
+  margin-top: 0.35rem;
+}
+
+.user-hr-form textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #4a4a4a;
+  background: #1a1a1a;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.user-hr-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.user-score-card-subtitle {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+}
+
+.user-score-card-period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.user-score-card-period .btn.active {
+  border-color: var(--accent, #63d0df);
+  color: var(--accent, #63d0df);
+}
+
+.user-score-card-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.user-score-card-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.user-score-card-kpi-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.user-score-card-kpi strong {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.user-score-card-kpi .muted {
+  font-size: 0.82rem;
+}
+
+.user-score-card-live {
+  color: #6dd96d;
+  font-weight: 600;
+}
+
+.user-score-card-sessions h5 {
+  margin: 0 0 0.45rem;
+  font-size: 0.92rem;
+}
+
+.user-score-card-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.user-score-card-table th,
+.user-score-card-table td {
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.user-score-card-table tr.is-open td {
+  color: #6dd96d;
+}
+
+.user-score-card-empty {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+html[data-bo-theme='light'] .user-hr-document,
+html[data-bo-theme='light'] .user-hr-loan-card {
+  border-color: #d0d0d0;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+html[data-bo-theme='light'] .user-hr-form textarea {
+  background: #fff;
+  border-color: #ccc;
+}
+
+html[data-bo-theme='light'] .user-score-card-kpi {
+  border-color: #d0d0d0;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+html[data-bo-theme='light'] .user-score-card-table th,
+html[data-bo-theme='light'] .user-score-card-table td {
+  border-bottom-color: #e0e0e0;
+}
+
+@media (max-width: 900px) {
+  .user-hr-grid,
+  .user-hr-documents,
+  .user-hr-loan-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.user-badge-print-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
 }
 
 .user-badge-generate-standalone {
@@ -2448,4 +2769,84 @@ html[data-bo-theme='light'] :is(.table th, .table td) {
 
 .loyalty-purchase-loyalty-cell {
   white-space: nowrap;
+}
+
+.face-login-video {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 8px;
+  background: #111;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.face-enrollment-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.face-enrollment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.face-enrollment-camera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.pos-terminals-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.pos-terminals-name-input {
+  min-width: 8rem;
+  max-width: 14rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #5a5a5a;
+  background: #1a1a1a;
+  color: inherit;
+  font: inherit;
+}
+
+html[data-bo-theme='light'] .pos-terminals-name-input {
+  border-color: #bbb;
+  background: #fff;
+}
+
+.pos-terminal-status {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.pos-terminal-status--online {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+.pos-terminal-status--offline {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+html[data-bo-theme='light'] .pos-terminal-status--online {
+  background: rgba(22, 101, 52, 0.12);
+  color: #166534;
+}
+
+html[data-bo-theme='light'] .pos-terminal-status--offline {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
 }

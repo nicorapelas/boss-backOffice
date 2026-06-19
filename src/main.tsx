@@ -7,6 +7,7 @@ import './theme/bo-theme-ubuntu.css'
 import './theme/bo-theme-elon.css'
 import './theme/bo-theme-lego.css'
 import './theme/bo-theme-jacobs.css'
+import './theme/bo-theme-cosmic.css'
 
 applyBoThemeToDocument(readStoredBoTheme())
 

@@ -250,6 +250,78 @@ export async function deleteProductPhoto(productId: string): Promise<void> {
   await apiFetch(`/products/${encodeURIComponent(productId)}/photo`, { method: 'DELETE' })
 }
 
+export type UserDocumentKind = 'contract' | 'id'
+
+export async function uploadUserDocument(
+  userId: string,
+  kind: UserDocumentKind,
+  file: File,
+): Promise<{ kind: UserDocumentKind; document: { originalName: string; uploadedAt: string } | null }> {
+  const url = `${apiBaseOrThrow()}/users/${encodeURIComponent(userId)}/documents/${kind}`
+  const tryPost = async (token: string | null) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    headers.set('X-Client-App', 'back-office')
+    return fetch(url, { method: 'POST', headers, body: fd })
+  }
+  let res = await tryPost(getAccessToken())
+  let text = await res.text()
+  let data = text ? (JSON.parse(text) as unknown) : null
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) {
+      res = await tryPost(getAccessToken())
+      text = await res.text()
+      data = text ? (JSON.parse(text) as unknown) : null
+    }
+  }
+  if (!res.ok) {
+    const err = data as ApiErrorBody | null
+    throw new Error(err?.message ?? err?.error ?? res.statusText)
+  }
+  return data as { kind: UserDocumentKind; document: { originalName: string; uploadedAt: string } | null }
+}
+
+export async function deleteUserDocument(userId: string, kind: UserDocumentKind): Promise<void> {
+  await apiFetch(`/users/${encodeURIComponent(userId)}/documents/${kind}`, { method: 'DELETE' })
+}
+
+export function userDocumentUrl(userId: string, kind: UserDocumentKind): string {
+  return `${apiBaseOrThrow()}/users/${encodeURIComponent(userId)}/documents/${kind}`
+}
+
+export async function openUserDocument(userId: string, kind: UserDocumentKind): Promise<void> {
+  const u = userDocumentUrl(userId, kind)
+  const tryGet = async (token: string | null) => {
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    headers.set('X-Client-App', 'back-office')
+    return fetch(u, { headers })
+  }
+  let res = await tryGet(getAccessToken())
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) res = await tryGet(getAccessToken())
+  }
+  if (!res.ok) {
+    const text = await res.text()
+    let msg = res.statusText
+    try {
+      const j = text ? (JSON.parse(text) as ApiErrorBody) : null
+      msg = j?.message ?? j?.error ?? msg
+    } catch {
+      // ignore
+    }
+    throw new Error(msg)
+  }
+  const blob = await res.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  window.open(objectUrl, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+}
+
 /** Caller must `URL.revokeObjectURL` when done. */
 export async function fetchProductPhotoObjectUrl(productId: string, revision: number): Promise<string> {
   const u = `${apiBaseOrThrow()}/products/${encodeURIComponent(productId)}/photo?rev=${encodeURIComponent(String(revision))}`

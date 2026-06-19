@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
     },
     optimizeDeps: {
+      include: ['@vladmandic/face-api'],
       esbuildOptions: {
         target: 'es2020',
       },

@@ -102,6 +102,7 @@ export interface Sale {
   saleId?: string
   /** Register / till code snapshot when the sale was recorded. */
   tillCode?: string
+  cashierSignInMethod?: 'badge' | 'face' | 'password' | 'offline_badge' | 'offline_password'
   cashier: SaleCashierInfo | string
   items: SaleLine[]
   total: number
@@ -124,6 +125,7 @@ export interface Sale {
   loyaltyPointsRedeemed?: number
   loyaltyPointsEarned?: number
   loyaltyDiscountAmount?: number
+  cashRoundingAdjustment?: number
   onAccountAmount?: number
   houseAccountNumber?: string
   houseAccountName?: string
@@ -228,6 +230,64 @@ export interface ShiftRow {
   cashDifferences: ShiftCashDifference[]
 }
 
+export type UserPaymentTerms = 'weekly' | 'biweekly' | 'monthly' | 'custom'
+
+export type UserStaffDocumentMeta = {
+  originalName: string
+  mimeType?: string
+  uploadedAt: string
+}
+
+export type UserStaffLoan = {
+  _id?: string
+  startDate?: string | null
+  amount?: number | null
+  terms?: string | null
+  notes?: string | null
+}
+
+export type UserPerformanceAttendanceSession = {
+  id: string
+  status: 'open' | 'closed'
+  clockInAt: string
+  clockOutAt: string | null
+  clockInMethod: string
+  clockOutMethod: string | null
+  tillCode: string | null
+  durationMinutes: number
+}
+
+export type UserPerformanceSummary = {
+  period: { days: number; from: string; to: string }
+  sales: {
+    count: number
+    turnover: number
+    cashTotal: number
+    cardTotal: number
+    netTurnover: number
+  }
+  refunds: { count: number; total: number }
+  attendance: {
+    currentlyClockedIn: boolean
+    openSince: string | null
+    sessionCount: number
+    totalHours: number
+    recentSessions: UserPerformanceAttendanceSession[]
+  }
+}
+
+export type UserHrProfile = {
+  phone?: string | null
+  startDate?: string | null
+  paymentTerms?: UserPaymentTerms | null
+  paymentAmount?: number | null
+  notes?: string | null
+  scoreCard?: string | null
+  contractDocument?: UserStaffDocumentMeta | null
+  idDocument?: UserStaffDocumentMeta | null
+  loans?: UserStaffLoan[]
+}
+
 export interface BackOfficeUser {
   _id: string
   email: string
@@ -241,6 +301,9 @@ export interface BackOfficeUser {
   active?: boolean
   allowOfflineLogin?: boolean
   allowShopAssistCatalogAdjustment?: boolean
+  hasFaceEnrollment?: boolean
+  faceEnrollmentConsentAt?: string | null
+  hrProfile?: UserHrProfile | null
   legacy?: {
     source?: 'vector'
     userNo?: number
@@ -437,6 +500,19 @@ export interface LoyaltyPurchaseListResponse {
   purchases: LoyaltyPurchaseRow[]
 }
 
+export interface StaffAttendanceSettings {
+  enabled: boolean
+  logoutClockOutPromptEnabled: boolean
+  /** Prompt on till sign-out only after this many minutes clocked in; 0 = always when clocked in. */
+  logoutPromptAfterMinutes: number
+}
+
+export interface CashRoundingSettings {
+  enabled: boolean
+  incrementCents: 10 | 20 | 50
+  mode: 'nearest' | 'down' | 'up'
+}
+
 export interface StoreSettings {
   _id: string
   storeName: string
@@ -454,6 +530,16 @@ export interface StoreSettings {
   productPresets?: ProductPresetsState
   customerDisplay?: CustomerDisplaySettings
   loyaltyProgram?: LoyaltyProgramConfig
+  /** POS staff login at till: badge scan or face recognition. */
+  posLoginMethod?: 'badge' | 'face'
+  /** Store operator acceptance before face login is enabled. */
+  posFaceLoginConsent?: {
+    version: string
+    acceptedAt: string
+    acceptedBy?: string
+  } | null
+  staffAttendance?: StaffAttendanceSettings
+  cashRounding?: CashRoundingSettings
   catalogRevision?: number
   catalogPushedAt?: string | null
 }
@@ -468,7 +554,24 @@ export interface CatalogPushResponse {
   catalogPushedAt: string
 }
 
-/** GET /house-accounts */
+export interface PosTerminalRow {
+  tillCode: string
+  displayName?: string
+  lastSeenAt: string
+  lastIp?: string
+  appVersion?: string
+  platform?: string
+  hostname?: string
+  cashierUserId?: string
+  cashierDisplayName?: string
+  catalogRevision?: number
+  online: boolean
+  openShiftId?: string
+  openShiftOpenedAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface HouseAccountRow {
   _id: string
   accountNumber: string

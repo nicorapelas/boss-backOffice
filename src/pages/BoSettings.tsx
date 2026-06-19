@@ -10,6 +10,7 @@ const THEMES: { id: BoTheme; label: string; hint: string }[] = [
   { id: 'elon', label: 'Elon', hint: 'Old Glory blue & red — bold, minimal white' },
   { id: 'lego', label: 'Bricks', hint: 'Classic toy-brick reds, yellows & blues on a deep base' },
   { id: 'jacobs', label: 'Jacobs', hint: 'Blue sidebar, light workspace — tricolor stripe accents' },
+  { id: 'cosmic', label: 'Cosmic', hint: 'Pop!_OS Cosmic — charcoal base with cyan & indigo accents' },
 ]
 
 export function BoSettingsPage() {

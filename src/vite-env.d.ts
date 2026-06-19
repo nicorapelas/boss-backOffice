@@ -13,6 +13,8 @@ interface Window {
   electronApp?: {
     quit: () => Promise<void>
     minimize: () => Promise<void>
+    toggleMaximize: () => Promise<boolean>
+    isMaximized: () => Promise<boolean>
   }
   ipcRenderer?: import('electron').IpcRenderer
   electronAuth?: {
@@ -41,6 +43,14 @@ interface Window {
           barcodeTextX: number
           barcodeTextY: number
         }
+      },
+    ) => Promise<{ ok: boolean; error?: string }>
+    printStaffBadge: (
+      transport: unknown,
+      badge: { displayName: string; badgeCode: string; roleName?: string },
+      opts?: {
+        copies?: number
+        layout?: { widthMm: number; heightMm: number; gapMm: number }
       },
     ) => Promise<{ ok: boolean; error?: string }>
     printLabelFontTest: (

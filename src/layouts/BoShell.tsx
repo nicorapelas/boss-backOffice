@@ -5,7 +5,8 @@ import type { OfflineSyncConflictListResponse } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import { CommandPalette, commandPaletteShortcutLabel, useCommandPaletteShortcut } from '../components/CommandPalette'
-import { IconCloseWindow, IconMinimize, IconSearch } from '../icons/windowChrome'
+import { WindowChromeActions } from '../components/WindowChromeActions'
+import { IconSearch } from '../icons/windowChrome'
 import { useServerConnection } from '../network/useServerConnection'
 import { getAccessibleNavEntries } from '../nav/boNavRegistry'
 import { APP_NAME } from '../brand'
@@ -123,28 +124,7 @@ export function BoShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <div className="shell-content">
-        {window.electronApp ? (
-          <div className="shell-window-actions" role="toolbar" aria-label="Window">
-            <button
-              type="button"
-              className="btn ghost window-chrome-action"
-              aria-label="Minimize window"
-              title="Minimize"
-              onClick={() => void window.electronApp?.minimize()}
-            >
-              <IconMinimize className="window-chrome-action-icon" />
-            </button>
-            <button
-              type="button"
-              className="btn ghost window-chrome-action"
-              aria-label="Exit application"
-              title="Exit app"
-              onClick={() => void window.electronApp?.quit()}
-            >
-              <IconCloseWindow className="window-chrome-action-icon" />
-            </button>
-          </div>
-        ) : null}
+        <WindowChromeActions className="shell-window-actions" />
         {disconnected ? (
           <div className="server-connection-banner server-connection-banner--offline" role="status" aria-live="polite">
             Cannot reach server. Trying to reconnect...

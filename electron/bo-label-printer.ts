@@ -159,6 +159,84 @@ export function buildProductLabelTspl(
   return Buffer.from(lines.join('\n'), 'utf8')
 }
 
+export type StaffBadgePayload = {
+  displayName: string
+  badgeCode: string
+  roleName?: string
+}
+
+/** Code 128 module count (start + data + checksum + stop) for subset B-ish payloads. */
+function staffBadgeBarcodeModuleCount(data: string): number {
+  return 11 * data.length + 35
+}
+
+/** Practical Code128 width on TSC 203dpi for module-width picking. */
+function staffBadgeBarcodeWidthDots(data: string, moduleWidthDots: number): number {
+  return staffBadgeBarcodeModuleCount(data) * moduleWidthDots
+}
+
+function staffBadgeBarcodeFits(data: string, moduleWidthDots: number, labelWidthDots: number): boolean {
+  const sideMargin = 10
+  return staffBadgeBarcodeWidthDots(data, moduleWidthDots) + sideMargin * 2 <= labelWidthDots
+}
+
+function pickStaffBadgeBarcodeModule(data: string, labelWidthDots: number): number {
+  for (let moduleWidth = 3; moduleWidth >= 1; moduleWidth--) {
+    if (staffBadgeBarcodeFits(data, moduleWidth, labelWidthDots)) return moduleWidth
+  }
+  return 1
+}
+
+export function buildStaffBadgeTspl(
+  payload: StaffBadgePayload,
+  opts?: {
+    layout?: ProductLabelLayout
+    copies?: number
+  },
+): Buffer {
+  const layout = opts?.layout ?? { widthMm: 55, heightMm: 24, gapMm: 4 }
+  const copies = Math.max(1, Math.min(10, Math.floor(opts?.copies ?? 1)))
+  const labelWidthDots = Math.max(1, Math.floor(layout.widthMm * 8))
+  const labelHeightDots = Math.max(1, Math.floor(layout.heightMm * 8))
+
+  const name = clip(sanitizeText(payload.displayName || 'Staff'), 28)
+  const role = clip(sanitizeText(payload.roleName || ''), 24)
+  const badge = sanitizeText(payload.badgeCode || '')
+  if (!badge) throw new Error('Badge code is required')
+
+  const barcodeModuleWidth = pickStaffBadgeBarcodeModule(badge, labelWidthDots)
+  const nameLineH = 20
+  const roleLineH = 16
+  const textGap = 4
+  const barcodeGap = 6
+  const barcodeHeight = 48
+  const contentHeight =
+    nameLineH + (role ? textGap + roleLineH + barcodeGap : barcodeGap) + barcodeHeight
+  const topY = Math.max(4, Math.floor((labelHeightDots - contentHeight) / 2))
+  const nameY = topY
+  const roleY = topY + nameLineH + textGap
+  const barcodeY = role ? roleY + roleLineH + barcodeGap : topY + nameLineH + barcodeGap
+  // TSC alignment 2 = center barcode on X anchor (printer computes true width).
+  const barcodeCenterX = Math.floor(labelWidthDots / 2)
+
+  const header = [
+    `SIZE ${layout.widthMm} mm,${layout.heightMm} mm`,
+    `GAP ${layout.gapMm} mm,0 mm`,
+    'DIRECTION 1',
+    'REFERENCE 0,0',
+    'CLS',
+  ]
+
+  const body = [
+    `BLOCK 0,${nameY},${labelWidthDots},${nameLineH},"2",0,1,1,0,2,"${name}"`,
+    ...(role ? [`BLOCK 0,${roleY},${labelWidthDots},${roleLineH},"1",0,1,1,0,2,"${role}"`] : []),
+    `BARCODE ${barcodeCenterX},${barcodeY},"128",${barcodeHeight},0,0,${barcodeModuleWidth},${barcodeModuleWidth},2,"${badge}"`,
+  ]
+
+  const lines = [...header, ...body, `PRINT 1,${copies}`, '']
+  return Buffer.from(lines.join('\n'), 'utf8')
+}
+
 export function buildLabelFontTestTspl(opts?: {
   layout?: ProductLabelLayout
   copies?: number
