@@ -20,6 +20,7 @@ type AccountFormState = {
   contactPerson: string
   email: string
   vatNumber: string
+  companyRegistrationNumber: string
   addressText: string
   paymentTerms: HouseAccountPaymentTerms
   notes: string
@@ -33,6 +34,7 @@ function emptyAccountForm(): AccountFormState {
     contactPerson: '',
     email: '',
     vatNumber: '',
+    companyRegistrationNumber: '',
     addressText: '',
     paymentTerms: '',
     notes: '',
@@ -47,6 +49,7 @@ function accountToForm(row: HouseAccountRow): AccountFormState {
     contactPerson: row.contactPerson ?? '',
     email: row.email ?? '',
     vatNumber: row.vatNumber ?? '',
+    companyRegistrationNumber: row.companyRegistrationNumber ?? '',
     addressText: (row.addressLines ?? []).join('\n'),
     paymentTerms: (row.paymentTerms as HouseAccountPaymentTerms) ?? '',
     notes: row.notes ?? '',
@@ -77,6 +80,7 @@ function formToPayload(form: AccountFormState) {
       contactPerson: form.contactPerson.trim(),
       email: form.email.trim(),
       vatNumber: form.vatNumber.trim(),
+      companyRegistrationNumber: form.companyRegistrationNumber.trim(),
       addressLines: form.addressText.split('\n').map((s) => s.trim()).filter(Boolean),
       paymentTerms: form.paymentTerms,
       notes: form.notes.trim(),
@@ -141,6 +145,15 @@ function AccountFieldsGrid({
           id={`${idPrefix}-vat`}
           value={form.vatNumber}
           onChange={(e) => setForm((p) => ({ ...p, vatNumber: e.target.value }))}
+          placeholder="Optional"
+        />
+      </label>
+      <label className="sales-field sales-field--half">
+        Company registration number
+        <input
+          id={`${idPrefix}-company-reg`}
+          value={form.companyRegistrationNumber}
+          onChange={(e) => setForm((p) => ({ ...p, companyRegistrationNumber: e.target.value }))}
           placeholder="Optional"
         />
       </label>
@@ -462,6 +475,11 @@ export function HouseAccountsPage() {
                             VAT {r.vatNumber}
                           </span>
                         ) : null}
+                        {r.companyRegistrationNumber ? (
+                          <span className="muted" style={{ display: 'block', fontSize: '0.8rem' }}>
+                            Reg {r.companyRegistrationNumber}
+                          </span>
+                        ) : null}
                       </td>
                       <td>
                         {r.contactPerson || '—'}
@@ -572,6 +590,7 @@ export function HouseAccountsPage() {
                         <DetailCell label="Phone">{acct.phone || '—'}</DetailCell>
                         <DetailCell label="Email">{acct.email || '—'}</DetailCell>
                         <DetailCell label="VAT">{acct.vatNumber || '—'}</DetailCell>
+                        <DetailCell label="Company reg.">{acct.companyRegistrationNumber || '—'}</DetailCell>
                         <DetailCell label="Terms">{paymentTermsLabel(acct.paymentTerms)}</DetailCell>
                         <DetailCell label="Address">
                           {(acct.addressLines ?? []).length > 0 ? (

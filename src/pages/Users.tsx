@@ -7,9 +7,10 @@ import { hasPermission } from '../auth/permissions'
 import { FaceEnrollmentPanel } from '../components/FaceEnrollmentPanel'
 import { UserHrProfilePanel } from '../components/UserHrProfilePanel'
 import { UserScoreCardPanel } from '../components/UserScoreCardPanel'
+import { UserSoldByPanel } from '../components/UserSoldByPanel'
 import { STAFF_FACE_ENROLLMENT_CONSENT_VERSION } from '../components/StaffFaceConsentModal'
 import { BoShell } from '../layouts/BoShell'
-import { readLabelSettings } from '../labels/labelSettings'
+import { getDefaultLabelProfile, profileToPrintSettings } from '../labels/labelSettings'
 import { collectUsedBadgeCodes, generateUniqueBadgeCode, BADGE_CODE_LENGTH } from '../users/badgeCodeGenerator'
 import { filterUsersBySearch } from '../users/userSearch'
 
@@ -220,7 +221,8 @@ export function UsersPage() {
     setError(null)
     setNotice(null)
     try {
-      const settings = readLabelSettings()
+      const profile = getDefaultLabelProfile()
+      const settings = profileToPrintSettings(profile)
       const result = await window.electronBo.printStaffBadge(
         settings.transport,
         {
@@ -612,6 +614,8 @@ export function UsersPage() {
                       userId={u._id}
                       userLabel={u.displayName || u.email}
                     />
+
+                    <UserSoldByPanel userId={u._id} userLabel={u.displayName || u.email} />
 
                     <UserHrProfilePanel
                       user={u}

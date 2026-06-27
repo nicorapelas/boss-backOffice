@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld('electronAuth', {
   clear: () => ipcRenderer.invoke('auth:clear') as Promise<{ ok: boolean }>,
 })
 
+contextBridge.exposeInMainWorld('electronLabel', {
+  getConfigSync: () => ipcRenderer.sendSync('label:getConfigSync') as string | null,
+  setConfig: (json: string) => ipcRenderer.invoke('label:setConfig', json) as Promise<{ ok: boolean; error?: string }>,
+})
+
 contextBridge.exposeInMainWorld('electronBo', {
   printProductLabel: (
     transport: unknown,
@@ -42,7 +47,7 @@ contextBridge.exposeInMainWorld('electronBo', {
       copies?: number
       layout?: { widthMm: number; heightMm: number; gapMm: number }
       /** Built-in preset only; omit when using a custom saved template. */
-      presetId?: 'compactRetail' | 'priceFocus' | 'priceFocusSku' | 'barcodeFocus' | 'minimal'
+      presetId?: 'compactRetail' | 'compact40x16' | 'priceFocus' | 'priceFocusSku' | 'barcodeFocus' | 'minimal'
       template?: {
         nameX: number
         nameY: number
@@ -79,8 +84,13 @@ contextBridge.exposeInMainWorld('electronBo', {
     },
   ) =>
     ipcRenderer.invoke('bo:label:print-font-test', { transport, ...opts }) as Promise<{ ok: boolean; error?: string }>,
-  detectLabelTransport: () =>
-    ipcRenderer.invoke('bo:label:detect-transport') as Promise<{
+  calibrateLabelGap: (
+    transport: unknown,
+    opts?: { layout?: { widthMm: number; heightMm: number; gapMm: number } },
+  ) =>
+    ipcRenderer.invoke('bo:label:calibrate-gap', { transport, ...opts }) as Promise<{ ok: boolean; error?: string }>,
+  detectLabelTransport: (opts?: { excludePaths?: string[] }) =>
+    ipcRenderer.invoke('bo:label:detect-transport', opts ?? {}) as Promise<{
       ok: boolean
       transport?: { kind: 'usb'; path: string } | { kind: 'lan'; host: string; port: number }
       candidates: string[]

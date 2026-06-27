@@ -9,6 +9,7 @@ import {
   startTransition,
   type FormEvent,
 } from 'react'
+import { Link } from 'react-router-dom'
 import {
   apiFetch,
   deleteProductPhoto,
@@ -27,7 +28,15 @@ import {
   PRESET_ENTRY_MAX,
   removePresetAt as removePresetFromState,
 } from '../utils/productPresets'
-import { LABEL_SETTINGS_KEY, readLabelSettings, type LabelPrinterSettings } from '../labels/labelSettings'
+import {
+  formatProfileSummary,
+  getLabelProfileById,
+  profileToPrintSettings,
+  readLabelPrinterConfig,
+  resolveInitialPrintProfileId,
+  writeLastUsedLabelProfileId,
+  type LabelPrinterProfile,
+} from '../labels/labelSettings'
 import { useCatalogRevisionSync } from '../hooks/useCatalogRevisionSync'
 
 type VolumeTierDraft = { id: string; minQty: string; maxTo: string; unitPrice: string }
@@ -160,6 +169,7 @@ export function Products() {
   const [createPrice, setCreatePrice] = useState('')
   const [createStock, setCreateStock] = useState('0')
   const [createTrackInventory, setCreateTrackInventory] = useState(true)
+  const [createTrackSoldBy, setCreateTrackSoldBy] = useState(false)
   const [createVolumeTiering, setCreateVolumeTiering] = useState(false)
   const [createTierRows, setCreateTierRows] = useState<VolumeTierDraft[]>(() => [newTierDraftRow()])
   const [createSupplierId, setCreateSupplierId] = useState('')
@@ -176,6 +186,7 @@ export function Products() {
   const [editPrice, setEditPrice] = useState('')
   const [editStock, setEditStock] = useState('0')
   const [editTrackInventory, setEditTrackInventory] = useState(true)
+  const [editTrackSoldBy, setEditTrackSoldBy] = useState(false)
   const [editVolumeTiering, setEditVolumeTiering] = useState(false)
   const [editTierRows, setEditTierRows] = useState<VolumeTierDraft[]>(() => [newTierDraftRow()])
   const [editSupplierId, setEditSupplierId] = useState('')
@@ -199,25 +210,17 @@ export function Products() {
   const deferredProductSearch = useDeferredValue(productSearch)
   const isSearchFiltering = productSearch !== deferredProductSearch
   const [categoryFilter, setCategoryFilter] = useState('__all__')
-  const [labelSettings, setLabelSettings] = useState<LabelPrinterSettings>(() => readLabelSettings())
   const [labelBusyProductId, setLabelBusyProductId] = useState<string | null>(null)
   const [labelNotice, setLabelNotice] = useState<string | null>(null)
   const [printLabelTarget, setPrintLabelTarget] = useState<LabelPrintTarget | null>(null)
   const [printLabelCopies, setPrintLabelCopies] = useState('1')
+  const [printLabelProfileId, setPrintLabelProfileId] = useState(() => resolveInitialPrintProfileId())
 
   const presetCatDatalistId = useId()
   const presetSubDatalistId = useId()
   const productCategoryDatalistId = useId()
   const productCreateSubCategoryDatalistId = useId()
   const productEditSubCategoryDatalistId = useId()
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LABEL_SETTINGS_KEY, JSON.stringify(labelSettings))
-    } catch {
-      // ignore quota/private mode
-    }
-  }, [labelSettings])
 
   useEffect(() => {
     if (!editing || !canRead) {
@@ -525,6 +528,7 @@ export function Products() {
       setEditPrice(String(p.price))
       setEditStock(String(p.stock))
       setEditTrackInventory(p.trackInventory !== false)
+      setEditTrackSoldBy(p.trackSoldBy === true)
       setEditVolumeTiering(Boolean(p.volumeTieringEnabled && p.volumeTiers?.length))
       setEditTierRows(productToTierDrafts(p))
       setEditSupplierId('')
@@ -656,6 +660,7 @@ export function Products() {
           price: Number(createPrice),
           stock: Number(createStock) || 0,
           trackInventory: createTrackInventory,
+          trackSoldBy: createTrackSoldBy,
           volumeTieringEnabled: createVolumeTiering,
           volumeTiers: createVolumeTiering ? draftsToVolumePayload(createTierRows) : [],
           ...(createJobCardLabour.trim() !== ''
@@ -709,6 +714,7 @@ export function Products() {
           price: Number(editPrice),
           stock: Number(editStock),
           trackInventory: editTrackInventory,
+          trackSoldBy: editTrackSoldBy,
           volumeTieringEnabled: editVolumeTiering,
           volumeTiers: editVolumeTiering ? draftsToVolumePayload(editTierRows) : [],
           jobCardLabourPerUnit: editJobCardLabour.trim() === '' ? 0 : Number(editJobCardLabour),
@@ -732,13 +738,18 @@ export function Products() {
     }
   }
 
-  async function printLabelWithCopies(target: LabelPrintTarget, copies: number): Promise<boolean> {
+  async function printLabelWithCopies(
+    target: LabelPrintTarget,
+    copies: number,
+    profile: LabelPrinterProfile,
+  ): Promise<boolean> {
     setLabelNotice(null)
     setError(null)
     if (!window.electronBo) {
       setError('Label printing is available in the desktop app only.')
       return false
     }
+    const labelSettings = profileToPrintSettings(profile)
     setLabelBusyProductId(target.key)
     try {
       const barcodeValue = (target.barcode ?? '').trim() || target.sku
@@ -762,7 +773,12 @@ export function Products() {
         setError(result.error ?? 'Label print failed')
         return false
       }
-      setLabelNotice(copies > 1 ? `Sent ${copies} labels: ${target.name}` : `Label sent: ${target.name}`)
+      writeLastUsedLabelProfileId(profile.id)
+      setLabelNotice(
+        copies > 1
+          ? `Sent ${copies} labels (${profile.name}): ${target.name}`
+          : `Label sent (${profile.name}): ${target.name}`,
+      )
       return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Label print failed')
@@ -773,16 +789,18 @@ export function Products() {
   }
 
   function openPrintLabelModal(target: LabelPrintTarget) {
+    const config = readLabelPrinterConfig()
+    const profile = getLabelProfileById(printLabelProfileId, config) ?? config.profiles.find((p) => p.isDefault) ?? config.profiles[0]
+    setPrintLabelProfileId(profile.id)
     setPrintLabelTarget(target)
-    setPrintLabelCopies(String(Math.max(1, Math.min(100, Math.floor(labelSettings.copies || 1)))))
+    setPrintLabelCopies(String(Math.max(1, Math.min(100, Math.floor(profile.copies || 1)))))
   }
 
   const handlePrintLabel = useCallback(
     (product: Product) => {
-      setPrintLabelTarget(labelPrintTargetFromProduct(product))
-      setPrintLabelCopies(String(Math.max(1, Math.min(100, Math.floor(labelSettings.copies || 1)))))
+      openPrintLabelModal(labelPrintTargetFromProduct(product))
     },
-    [labelSettings.copies],
+    [printLabelProfileId],
   )
 
   function closePrintLabelModal() {
@@ -819,50 +837,16 @@ export function Products() {
     if (!printLabelTarget) return
     const copies = Math.max(1, Math.min(100, Math.floor(Number(printLabelCopies) || 1)))
     setPrintLabelCopies(String(copies))
-    const ok = await printLabelWithCopies(printLabelTarget, copies)
+    const config = readLabelPrinterConfig()
+    const profile =
+      getLabelProfileById(printLabelProfileId, config) ??
+      config.profiles.find((p) => p.isDefault) ??
+      config.profiles[0]
+    const ok = await printLabelWithCopies(printLabelTarget, copies, profile)
     if (ok) closePrintLabelModal()
   }
 
-  async function printTestLabel() {
-    setLabelNotice(null)
-    setError(null)
-    if (!window.electronBo) {
-      setError('Label printing is available in the desktop app only.')
-      return
-    }
-    setLabelBusyProductId('__test__')
-    try {
-      const now = new Date()
-      const hh = String(now.getHours()).padStart(2, '0')
-      const mm = String(now.getMinutes()).padStart(2, '0')
-      const ss = String(now.getSeconds()).padStart(2, '0')
-      const result = await window.electronBo.printProductLabel(
-        labelSettings.transport,
-        {
-          name: 'TEST LABEL',
-          sku: `CAL-${hh}${mm}${ss}`,
-          barcodeValue: '2000068010001',
-          price: 99.99,
-        },
-        {
-          copies: 1,
-          layout: labelSettings.layout,
-          template: labelSettings.template,
-          presetId:
-            labelSettings.templateRef.kind === 'preset' ? labelSettings.templateRef.presetId : undefined,
-        },
-      )
-      if (!result.ok) {
-        setError(result.error ?? 'Test label failed')
-        return
-      }
-      setLabelNotice('Test label sent')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Test label failed')
-    } finally {
-      setLabelBusyProductId(null)
-    }
-  }
+  const labelPrinterProfiles = readLabelPrinterConfig().profiles
 
   async function persistSharedPresets(next: ProductPresetsState) {
     const saved = await apiFetch<ProductPresetsState>('/settings/product-presets', {
@@ -1130,6 +1114,19 @@ export function Products() {
           <label className="checkbox-row">
             <input
               type="checkbox"
+              checked={createTrackSoldBy}
+              onChange={(e) => setCreateTrackSoldBy(e.target.checked)}
+            />
+            <span>
+              Sold by
+              <span className="muted help-note">
+                Credits the logged-in cashier on each sale line; shown on their user profile (refunds reduce counts).
+              </span>
+            </span>
+          </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
               checked={createVolumeTiering}
               onChange={(e) => {
                 const on = e.target.checked
@@ -1295,146 +1292,10 @@ export function Products() {
               {categoryFilter !== '__all__' ? ' in category' : ''}
             </p>
           ) : null}
-          <details className="products-label-settings">
-            <summary>Label printer</summary>
-            <div className="inline-form">
-              <label>
-                Transport
-                <select
-                  value={labelSettings.transport.kind}
-                  onChange={(e) =>
-                    setLabelSettings((s) => ({
-                      ...s,
-                      transport:
-                        e.target.value === 'lan'
-                          ? { kind: 'lan', host: '192.168.1.50', port: 9100 }
-                          : { kind: 'usb', path: '/dev/usb/lp0' },
-                    }))
-                  }
-                >
-                  <option value="usb">USB device</option>
-                  <option value="lan">LAN (IP + port)</option>
-                </select>
-              </label>
-              {labelSettings.transport.kind === 'usb' ? (
-                <label>
-                  USB path
-                  <input
-                    value={labelSettings.transport.path}
-                    onChange={(e) =>
-                      setLabelSettings((s) => ({ ...s, transport: { kind: 'usb', path: e.target.value } }))
-                    }
-                    placeholder="/dev/usb/lp0"
-                  />
-                </label>
-              ) : (
-                <>
-                  <label>
-                    Host
-                    <input
-                      value={labelSettings.transport.host}
-                      onChange={(e) =>
-                        setLabelSettings((s) => {
-                          const current =
-                            s.transport.kind === 'lan' ? s.transport : { kind: 'lan' as const, host: '192.168.1.50', port: 9100 }
-                          return {
-                            ...s,
-                            transport: { kind: 'lan', host: e.target.value, port: current.port },
-                          }
-                        })
-                      }
-                      placeholder="192.168.1.50"
-                    />
-                  </label>
-                  <label>
-                    Port
-                    <input
-                      type="number"
-                      min={1}
-                      value={labelSettings.transport.port}
-                      onChange={(e) =>
-                        setLabelSettings((s) => {
-                          const current =
-                            s.transport.kind === 'lan' ? s.transport : { kind: 'lan' as const, host: '192.168.1.50', port: 9100 }
-                          return {
-                            ...s,
-                            transport: { kind: 'lan', host: current.host, port: Number(e.target.value) || 9100 },
-                          }
-                        })
-                      }
-                    />
-                  </label>
-                </>
-              )}
-              <label>
-                Width (mm)
-                <input
-                  type="number"
-                  min={10}
-                  value={labelSettings.layout.widthMm}
-                  onChange={(e) =>
-                    setLabelSettings((s) => ({
-                      ...s,
-                      layout: { ...s.layout, widthMm: Number(e.target.value) || s.layout.widthMm },
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Height (mm)
-                <input
-                  type="number"
-                  min={10}
-                  value={labelSettings.layout.heightMm}
-                  onChange={(e) =>
-                    setLabelSettings((s) => ({
-                      ...s,
-                      layout: { ...s.layout, heightMm: Number(e.target.value) || s.layout.heightMm },
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Gap (mm)
-                <input
-                  type="number"
-                  min={0}
-                  value={labelSettings.layout.gapMm}
-                  onChange={(e) =>
-                    setLabelSettings((s) => ({
-                      ...s,
-                      layout: { ...s.layout, gapMm: Number(e.target.value) || 0 },
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                Copies
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={labelSettings.copies}
-                  onChange={(e) =>
-                    setLabelSettings((s) => ({ ...s, copies: Math.max(1, Math.min(100, Number(e.target.value) || 1)) }))
-                  }
-                />
-              </label>
-            </div>
-            <p className="muted products-search-meta">
-              TSC defaults: 55x24mm label, 4mm gap. Advanced X/Y positioning is in Label settings.
-            </p>
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn small"
-                onClick={() => void printTestLabel()}
-                disabled={labelBusyProductId === '__test__'}
-              >
-                {labelBusyProductId === '__test__' ? 'Printing test…' : 'Print test label'}
-              </button>
-            </div>
-          </details>
+          <p className="muted products-search-meta">
+            Label printers are configured in{' '}
+            <Link to="/label-settings">Label settings</Link> (up to two printers).
+          </p>
           {labelNotice ? <p className="success">{labelNotice}</p> : null}
         </div>
         {categories.length > 0 ? (
@@ -1518,6 +1379,26 @@ export function Products() {
                   />
                 </label>
               </div>
+              {labelPrinterProfiles.length > 1 ? (
+                <fieldset className="label-print-profile-picker" style={{ margin: '0.75rem 0', border: 'none', padding: 0 }}>
+                  <legend className="muted" style={{ marginBottom: '0.35rem' }}>
+                    Printer
+                  </legend>
+                  {labelPrinterProfiles.map((profile) => (
+                    <label key={profile.id} className="pos-settings-check" style={{ display: 'flex', marginBottom: '0.35rem' }}>
+                      <input
+                        type="radio"
+                        name="print-label-profile"
+                        value={profile.id}
+                        checked={printLabelProfileId === profile.id}
+                        onChange={() => setPrintLabelProfileId(profile.id)}
+                      />
+                      {formatProfileSummary(profile)}
+                      {profile.isDefault ? ' · default' : ''}
+                    </label>
+                  ))}
+                </fieldset>
+              ) : null}
               <div className="form-actions">
                 <button type="submit" className="btn primary">
                   Print
@@ -1735,6 +1616,19 @@ export function Products() {
                   Track inventory
                   <span className="muted help-note">
                     Off for services or labour — stock is not checked or reduced on sale.
+                  </span>
+                </span>
+              </label>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={editTrackSoldBy}
+                  onChange={(e) => setEditTrackSoldBy(e.target.checked)}
+                />
+                <span>
+                  Sold by
+                  <span className="muted help-note">
+                    Credits the logged-in cashier on each sale line; shown on their user profile (refunds reduce counts).
                   </span>
                 </span>
               </label>

@@ -38,6 +38,8 @@ export interface Product {
   stock: number
   /** When false, service/labour — no stock enforcement at sale. */
   trackInventory?: boolean
+  /** Credit logged-in cashier on each sale line (user profile sold-by report). */
+  trackSoldBy?: boolean
   /** Progressive volume pricing (ordinal 1 = first of this line’s quantity). */
   volumeTieringEnabled?: boolean
   volumeTiers?: Array<{ minQty: number; maxQty: number | null; unitPrice: number }>
@@ -276,6 +278,51 @@ export type UserPerformanceSummary = {
   }
 }
 
+export type UserSoldByLineRow = {
+  saleId: string
+  saleShortId?: string
+  occurredAt: string
+  sku?: string
+  productName: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+  kind: 'sale' | 'refund'
+}
+
+export type UserSoldBySalesReport = {
+  userId: string
+  days: number
+  from: string
+  to: string
+  lines: UserSoldByLineRow[]
+  totals: { quantity: number; lineTotal: number }
+}
+
+export type StaffShiftPerformanceRow = {
+  userId: string
+  displayName: string
+  roleName: string | null
+  sessionId: string
+  clockInAt: string
+  clockInMethod: string
+  tillCode: string | null
+  shiftMinutes: number
+  salesCount: number
+  turnover: number
+  cashTotal: number
+  cardTotal: number
+  refundCount: number
+  refundTotal: number
+  netTurnover: number
+}
+
+export type StaffShiftPerformanceResponse = {
+  attendanceEnabled: boolean
+  generatedAt: string
+  staff: StaffShiftPerformanceRow[]
+}
+
 export type UserHrProfile = {
   phone?: string | null
   startDate?: string | null
@@ -325,6 +372,30 @@ export interface StoreRestoreResponse {
   manifest: StoreBackupManifest
   inserted: Record<string, number>
   roleRepair?: { fixed: number; unresolved: number }
+}
+
+export interface MongoCloudBackupResult {
+  ok: true
+  trigger: 'manual' | 'scheduled'
+  startedAt: string
+  finishedAt: string
+  archiveBytes: number
+  databaseName: string
+}
+
+export interface MongoCloudBackupStatus {
+  enabled: boolean
+  configured: boolean
+  schedule: string
+  databaseName: string
+  running: boolean
+  lastRun: MongoCloudBackupResult | null
+  lastError: { at: string; message: string; trigger: 'manual' | 'scheduled' } | null
+}
+
+export interface MongoCloudBackupResponse {
+  message: string
+  result: MongoCloudBackupResult
 }
 
 export interface VectorImportStats {
@@ -455,6 +526,7 @@ export interface CustomerDisplaySettings {
     headline?: string
     subtext?: string
     imageUrl?: string
+    idleImageRevision?: number
   }
   theme?: {
     backgroundColor?: string
@@ -505,6 +577,10 @@ export interface StaffAttendanceSettings {
   logoutClockOutPromptEnabled: boolean
   /** Prompt on till sign-out only after this many minutes clocked in; 0 = always when clocked in. */
   logoutPromptAfterMinutes: number
+  /** First sale after this time auto-closes an open attendance session at sale time. */
+  autoClockOutEnabled: boolean
+  /** Local store time HH:mm (24h), e.g. 18:00 */
+  autoClockOutTime: string
 }
 
 export interface CashRoundingSettings {
@@ -580,6 +656,7 @@ export interface HouseAccountRow {
   contactPerson?: string
   email?: string
   vatNumber?: string
+  companyRegistrationNumber?: string
   addressLines?: string[]
   paymentTerms?: string
   notes?: string

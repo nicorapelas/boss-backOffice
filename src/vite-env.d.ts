@@ -22,6 +22,10 @@ interface Window {
     getBundle: () => Promise<string | null>
     clear: () => Promise<{ ok: boolean }>
   }
+  electronLabel?: {
+    getConfigSync: () => string | null
+    setConfig: (json: string) => Promise<{ ok: boolean; error?: string }>
+  }
   electronBo?: {
     printProductLabel: (
       transport: unknown,
@@ -29,7 +33,7 @@ interface Window {
       opts?: {
         copies?: number
         layout?: { widthMm: number; heightMm: number; gapMm: number }
-        presetId?: 'compactRetail' | 'priceFocus' | 'priceFocusSku' | 'barcodeFocus' | 'minimal'
+        presetId?: 'compactRetail' | 'compact40x16' | 'priceFocus' | 'priceFocusSku' | 'barcodeFocus' | 'minimal'
         template?: {
           nameX: number
           nameY: number
@@ -60,7 +64,11 @@ interface Window {
         layout?: { widthMm: number; heightMm: number; gapMm: number }
       },
     ) => Promise<{ ok: boolean; error?: string }>
-    detectLabelTransport: () => Promise<{
+    calibrateLabelGap: (
+      transport: unknown,
+      opts?: { layout?: { widthMm: number; heightMm: number; gapMm: number } },
+    ) => Promise<{ ok: boolean; error?: string }>
+    detectLabelTransport: (opts?: { excludePaths?: string[] }) => Promise<{
       ok: boolean
       transport?: { kind: 'usb'; path: string } | { kind: 'lan'; host: string; port: number }
       candidates: string[]

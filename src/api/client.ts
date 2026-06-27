@@ -250,6 +250,66 @@ export async function deleteProductPhoto(productId: string): Promise<void> {
   await apiFetch(`/products/${encodeURIComponent(productId)}/photo`, { method: 'DELETE' })
 }
 
+/** Public customer-display idle banner (no auth). */
+export function storeIdleImageUrl(revision: number): string {
+  if (revision < 1) return ''
+  return `${apiBaseOrThrow()}/settings/store/idle-image?v=${revision}`
+}
+
+/** Caller must `URL.revokeObjectURL` when done. */
+export async function fetchStoreIdleImageObjectUrl(revision: number): Promise<string> {
+  const u = storeIdleImageUrl(revision)
+  if (!u) throw new Error('No idle image revision')
+  const res = await fetch(u)
+  if (!res.ok) {
+    const text = await res.text()
+    let msg = res.statusText
+    try {
+      const j = text ? (JSON.parse(text) as ApiErrorBody) : null
+      msg = j?.message ?? j?.error ?? msg
+    } catch {
+      // ignore
+    }
+    throw new Error(msg)
+  }
+  const blob = await res.blob()
+  return URL.createObjectURL(blob)
+}
+
+export async function uploadStoreIdleImage(
+  file: File,
+): Promise<{ idleImageRevision: number; imageUrl: string }> {
+  const url = `${apiBaseOrThrow()}/settings/store/idle-image`
+  const tryPost = async (token: string | null) => {
+    const fd = new FormData()
+    fd.append('image', file)
+    const headers = new Headers()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+    headers.set('X-Client-App', 'back-office')
+    return fetch(url, { method: 'POST', headers, body: fd })
+  }
+  let res = await tryPost(getAccessToken())
+  let text = await res.text()
+  let data = text ? (JSON.parse(text) as unknown) : null
+  if (res.status === 401) {
+    const refreshed = await runRefresh()
+    if (refreshed) {
+      res = await tryPost(getAccessToken())
+      text = await res.text()
+      data = text ? (JSON.parse(text) as unknown) : null
+    }
+  }
+  if (!res.ok) {
+    const err = data as ApiErrorBody | null
+    throw new Error(err?.message ?? err?.error ?? res.statusText)
+  }
+  return data as { idleImageRevision: number; imageUrl: string }
+}
+
+export async function deleteStoreIdleImage(): Promise<void> {
+  await apiFetch('/settings/store/idle-image', { method: 'DELETE' })
+}
+
 export type UserDocumentKind = 'contract' | 'id'
 
 export async function uploadUserDocument(
@@ -473,6 +533,14 @@ export async function restoreStoreBackup(file: File, confirm: string) {
   return uploadStoreBackupZip(file, '/store-backup/restore', { confirm }) as Promise<
     import('./types').StoreRestoreResponse
   >
+}
+
+export async function fetchMongoCloudBackupStatus() {
+  return apiFetch<import('./types').MongoCloudBackupStatus>('/store-backup/cloud/status')
+}
+
+export async function triggerMongoCloudBackup() {
+  return apiFetch<import('./types').MongoCloudBackupResponse>('/store-backup/cloud', { method: 'POST' })
 }
 
 async function uploadMigrationZip(

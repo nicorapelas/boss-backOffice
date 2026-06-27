@@ -1,18 +1,29 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
-import { downloadStoreBackup, previewStoreRestore, restoreStoreBackup } from '../api/client'
-import type { StoreBackupManifest, StoreRestoreResponse } from '../api/types'
+import {
+  downloadStoreBackup,
+  fetchMongoCloudBackupStatus,
+  previewStoreRestore,
+  restoreStoreBackup,
+  triggerMongoCloudBackup,
+} from '../api/client'
+import type { MongoCloudBackupStatus, StoreBackupManifest, StoreRestoreResponse } from '../api/types'
 import { BusyModal, waitForModalPaint } from '../components/BusyModal'
 import { BoShell } from '../layouts/BoShell'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 
-type BusyKind = 'backup' | 'preview' | 'restore'
+type BusyKind = 'backup' | 'cloud' | 'preview' | 'restore'
 
 const BUSY_COPY: Record<BusyKind, { title: string; message: string }> = {
   backup: {
     title: 'Preparing backup',
     message: 'Collecting store data and building the ZIP file. This may take a few minutes.',
+  },
+  cloud: {
+    title: 'Backing up to cloud',
+    message:
+      'Dumping MongoDB and mirroring to the configured cloud destination. This may take a few minutes.',
   },
   preview: {
     title: 'Checking backup',
@@ -36,6 +47,22 @@ export function StoreBackupPage() {
   const [confirmText, setConfirmText] = useState('')
   const [preview, setPreview] = useState<StoreBackupManifest | null>(null)
   const [restoreResult, setRestoreResult] = useState<StoreRestoreResponse | null>(null)
+  const [cloudStatus, setCloudStatus] = useState<MongoCloudBackupStatus | null>(null)
+
+  useEffect(() => {
+    if (!allowed) return
+    void fetchMongoCloudBackupStatus()
+      .then(setCloudStatus)
+      .catch(() => setCloudStatus(null))
+  }, [allowed])
+
+  async function refreshCloudStatus() {
+    try {
+      setCloudStatus(await fetchMongoCloudBackupStatus())
+    } catch {
+      setCloudStatus(null)
+    }
+  }
 
   async function beginBusy(kind: BusyKind, work: () => Promise<void>) {
     flushSync(() => setBusy(kind))
@@ -58,6 +85,23 @@ export function StoreBackupPage() {
       })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Backup failed')
+    }
+  }
+
+  async function onCloudBackup() {
+    if (!allowed) return
+    setError(null)
+    setSuccess(null)
+    try {
+      await beginBusy('cloud', async () => {
+        const res = await triggerMongoCloudBackup()
+        await refreshCloudStatus()
+        const mb = (res.result.archiveBytes / (1024 * 1024)).toFixed(1)
+        setSuccess(`${res.message} (${res.result.databaseName}, ${mb} MB)`)
+      })
+    } catch (e) {
+      await refreshCloudStatus()
+      setError(e instanceof Error ? e.message : 'Cloud backup failed')
     }
   }
 
@@ -139,6 +183,56 @@ export function StoreBackupPage() {
               onClick={() => void onDownloadBackup()}
             >
               {busy === 'backup' ? 'Preparing…' : 'Download full backup (ZIP)'}
+            </button>
+          </section>
+
+          <section className="panel" style={{ marginTop: '1.25rem' }}>
+            <h2>Cloud backup (MongoDB)</h2>
+            <p className="muted">
+              Mirror the live database to your configured MongoDB Atlas (or remote) cluster using{' '}
+              <code>mongodump</code> and <code>mongorestore</code>. Runs automatically each day at{' '}
+              <strong>{cloudStatus?.schedule ?? '13:00'}</strong> when enabled on the server.
+            </p>
+            {cloudStatus && !cloudStatus.enabled ? (
+              <p className="muted" style={{ marginTop: '0.5rem' }}>
+                Daily schedule is <strong>off</strong> (<code>mongoCloudBackup.enabled</code>). Manual
+                backup still works when a destination URI is configured.
+              </p>
+            ) : null}
+            {cloudStatus && !cloudStatus.configured ? (
+              <p className="error" style={{ marginTop: '0.5rem' }}>
+                Destination URI is missing — set <code>mongoCloudBackup.destinationUri</code> or{' '}
+                <code>MONGO_CLOUD_BACKUP_URI</code> in the config file the server is using (
+                <code>development.json</code> when running <code>npm run dev</code>,{' '}
+                <code>production.json</code> or env when running production).
+              </p>
+            ) : null}
+            {cloudStatus?.lastRun ? (
+              <p className="muted" style={{ marginTop: '0.5rem' }}>
+                Last successful backup:{' '}
+                <strong>{new Date(cloudStatus.lastRun.finishedAt).toLocaleString()}</strong>
+                {' · '}
+                {cloudStatus.lastRun.trigger === 'manual' ? 'manual' : 'scheduled'}
+              </p>
+            ) : null}
+            {cloudStatus?.lastError ? (
+              <p className="error" style={{ marginTop: '0.5rem' }}>
+                Last error ({new Date(cloudStatus.lastError.at).toLocaleString()}):{' '}
+                {cloudStatus.lastError.message}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className="btn primary"
+              disabled={
+                busy !== null ||
+                cloudStatus?.running === true ||
+                cloudStatus?.configured === false
+              }
+              onClick={() => void onCloudBackup()}
+              style={{ marginTop: '0.75rem' }}
+            >
+              {busy === 'cloud' ? 'Backing up…' : 'Backup to cloud'}
             </button>
           </section>
 

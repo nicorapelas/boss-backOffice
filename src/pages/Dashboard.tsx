@@ -8,9 +8,11 @@ import type {
   Product,
   Sale,
   SaleListResponse,
+  StaffShiftPerformanceResponse,
 } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
+import { StaffShiftPerformancePanel } from '../components/StaffShiftPerformancePanel'
 import { BoShell } from '../layouts/BoShell'
 
 type CatalogStats = {
@@ -47,12 +49,17 @@ export function DashboardPage() {
   const canReadCatalog = hasPermission(user, 'catalog.read')
   const canReadFinancials = hasPermission(user, 'financials.read')
   const canReadSales = hasPermission(user, 'sales.read')
+  const canViewStaffShift =
+    hasPermission(user, 'users.manage') || hasPermission(user, 'sales.read')
 
   const [financials, setFinancials] = useState<FinancialsSummary | null>(null)
   const [catalogStats, setCatalogStats] = useState<CatalogStats | null>(null)
   const [catalogSync, setCatalogSync] = useState<CatalogSyncStatus | null>(null)
   const [recentSales, setRecentSales] = useState<Sale[]>([])
   const [openConflictCount, setOpenConflictCount] = useState<number | null>(null)
+  const [staffShiftPerformance, setStaffShiftPerformance] = useState<StaffShiftPerformanceResponse | null>(
+    null,
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -102,6 +109,14 @@ export function DashboardPage() {
         )
       }
 
+      if (canViewStaffShift) {
+        tasks.push(
+          apiFetch<StaffShiftPerformanceResponse>('/attendance/staff-shift-performance').then(
+            setStaffShiftPerformance,
+          ),
+        )
+      }
+
       await Promise.all(tasks)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load dashboard')
@@ -113,7 +128,7 @@ export function DashboardPage() {
   useEffect(() => {
     void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canReadCatalog, canReadFinancials, canReadSales])
+  }, [canReadCatalog, canReadFinancials, canReadSales, canViewStaffShift])
 
   return (
     <BoShell>
@@ -164,6 +179,13 @@ export function DashboardPage() {
           }
         />
       </section>
+
+      {canViewStaffShift ? (
+        <section className="panel dashboard-staff-shift-panel">
+          <h2>Staff shift performance</h2>
+          <StaffShiftPerformancePanel data={staffShiftPerformance} />
+        </section>
+      ) : null}
 
       <div className="dashboard-grid">
         <section className="panel">

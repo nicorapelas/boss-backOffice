@@ -3,10 +3,13 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import { registerAuthIpc } from './auth-storage'
+import { registerLabelIpc } from './label-storage'
 import {
-  buildLabelFontTestTspl,
-  buildProductLabelTspl,
+  buildGapCalibrateTspl,
+  buildLabelFontTestPrintPackage,
+  buildProductLabelPrintPackage,
   buildStaffBadgeTspl,
+  executeLabelPrint,
   sendRawToPrinter,
   type LabelPrintPresetId,
   type LabelPrinterTransport,
@@ -17,6 +20,7 @@ import {
 
 const LABEL_PRINT_PRESET_IDS: readonly LabelPrintPresetId[] = [
   'compactRetail',
+  'compact40x16',
   'priceFocus',
   'priceFocusSku',
   'barcodeFocus',
@@ -41,6 +45,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST
 
 registerAuthIpc()
+registerLabelIpc()
 
 ipcMain.handle('app:quit', () => {
   app.quit()
@@ -68,7 +73,7 @@ ipcMain.handle('app:is-maximized', (event) => {
   return w.isMaximized()
 })
 
-async function detectUsbTransport(): Promise<{
+async function detectUsbTransport(excludePaths: string[] = []): Promise<{
   transport?: LabelPrinterTransport
   candidates: string[]
   error?: string
@@ -76,6 +81,7 @@ async function detectUsbTransport(): Promise<{
   if (process.platform !== 'linux') {
     return { candidates: [], error: 'USB auto-detect is currently supported on Linux only.' }
   }
+  const excluded = new Set(excludePaths.map((p) => p.trim()).filter(Boolean))
   const roots = ['/dev/usb', '/dev']
   const found = new Set<string>()
   for (const root of roots) {
@@ -92,6 +98,7 @@ async function detectUsbTransport(): Promise<{
   }
   const candidates = [...found].sort((a, b) => a.localeCompare(b))
   for (const p of candidates) {
+    if (excluded.has(p)) continue
     try {
       const st = await fs.stat(p)
       if (!st.isCharacterDevice()) continue
@@ -153,7 +160,26 @@ function parseLayout(raw: unknown): ProductLabelLayout | undefined {
   const gapMm = typeof r.gapMm === 'number' && Number.isFinite(r.gapMm) ? r.gapMm : undefined
   if (widthMm == null || heightMm == null || gapMm == null) return undefined
   if (widthMm <= 0 || heightMm <= 0 || gapMm < 0) return undefined
-  return { widthMm, heightMm, gapMm }
+  const layout: ProductLabelLayout = { widthMm, heightMm, gapMm }
+  if (typeof r.gapOffsetMm === 'number' && Number.isFinite(r.gapOffsetMm)) {
+    layout.gapOffsetMm = r.gapOffsetMm
+  }
+  if (typeof r.feedOffsetDots === 'number' && Number.isFinite(r.feedOffsetDots)) {
+    layout.feedOffsetDots = Math.round(r.feedOffsetDots)
+  }
+  if (typeof r.minimizePostPrintFeed === 'boolean') {
+    layout.minimizePostPrintFeed = r.minimizePostPrintFeed
+  }
+  if (typeof r.gapDetectEachJob === 'boolean') {
+    layout.gapDetectEachJob = r.gapDetectEachJob
+  }
+  if (typeof r.advanceHeightMm === 'number' && Number.isFinite(r.advanceHeightMm) && r.advanceHeightMm > 0) {
+    layout.advanceHeightMm = r.advanceHeightMm
+  }
+  if (r.smallLabelFontMode === 'bitmap' || r.smallLabelFontMode === 'builtin' || r.smallLabelFontMode === 'dejavu') {
+    layout.smallLabelFontMode = r.smallLabelFontMode
+  }
+  return layout
 }
 
 function parseTemplate(raw: unknown): ProductLabelTemplate | undefined {
@@ -230,8 +256,12 @@ ipcMain.handle(
       const layout = parseLayout(args?.layout)
       const template = parseTemplate(args?.template)
       const presetId = parsePresetId(args?.presetId)
-      const bytes = buildProductLabelTspl(label, { copies, layout, template, presetId })
-      await sendRawToPrinter(transport, bytes)
+      const pkg = await buildProductLabelPrintPackage(
+        label,
+        { copies, layout, template, presetId },
+        transport,
+      )
+      await executeLabelPrint(transport, pkg)
       return { ok: true }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Label print failed' }
@@ -298,8 +328,8 @@ ipcMain.handle(
       if (!transport) return { ok: false, error: 'Invalid label printer transport' }
       const copies = typeof args?.copies === 'number' && Number.isFinite(args.copies) ? args.copies : 1
       const layout = parseLayout(args?.layout)
-      const bytes = buildLabelFontTestTspl({ copies, layout })
-      await sendRawToPrinter(transport, bytes)
+      const pkg = await buildLabelFontTestPrintPackage({ copies, layout }, transport)
+      await executeLabelPrint(transport, pkg)
       return { ok: true }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Font test label failed' }
@@ -307,9 +337,29 @@ ipcMain.handle(
   },
 )
 
-ipcMain.handle('bo:label:detect-transport', async () => {
+ipcMain.handle(
+  'bo:label:calibrate-gap',
+  async (_evt, args?: { transport: unknown; layout?: unknown } | undefined) => {
+    try {
+      const transport = parseTransport(args?.transport)
+      if (!transport) return { ok: false, error: 'Invalid label printer transport' }
+      const layout = parseLayout(args?.layout)
+      if (!layout) return { ok: false, error: 'Invalid label layout' }
+      const bytes = buildGapCalibrateTspl(layout)
+      await sendRawToPrinter(transport, bytes)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Gap calibration failed' }
+    }
+  },
+)
+
+ipcMain.handle('bo:label:detect-transport', async (_evt, args?: { excludePaths?: unknown }) => {
   try {
-    const detected = await detectUsbTransport()
+    const excludePaths = Array.isArray(args?.excludePaths)
+      ? args.excludePaths.filter((p): p is string => typeof p === 'string')
+      : []
+    const detected = await detectUsbTransport(excludePaths)
     return { ok: true, ...detected }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Transport detection failed', candidates: [] as string[] }
@@ -349,11 +399,12 @@ function createWindow() {
     ...browserShellWindowOptions(),
   })
 
-  win.on('maximize', () => {
-    if (!win?.isDestroyed()) win.webContents.send('app:maximized-changed', true)
+  const mainWin = win
+  mainWin.on('maximize', () => {
+    if (!mainWin.isDestroyed()) mainWin.webContents.send('app:maximized-changed', true)
   })
-  win.on('unmaximize', () => {
-    if (!win?.isDestroyed()) win.webContents.send('app:maximized-changed', false)
+  mainWin.on('unmaximize', () => {
+    if (!mainWin.isDestroyed()) mainWin.webContents.send('app:maximized-changed', false)
   })
 
   win.webContents.on('did-finish-load', () => {

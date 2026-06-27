@@ -7,6 +7,13 @@
     "output": "release/${version}"
   },
   "files": ["dist", "dist-electron"],
+  "extraResources": [
+    {
+      "from": "electron/assets/fonts",
+      "to": "fonts",
+      "filter": ["**/*.TTF"]
+    }
+  ],
   "mac": {
     "target": ["dmg"],
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}"

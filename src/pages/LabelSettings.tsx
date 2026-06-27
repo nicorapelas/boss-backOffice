@@ -4,14 +4,22 @@ import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
 import {
   DEFAULT_LABEL_SETTINGS,
+  DEFAULT_SMALL_LABEL_SETTINGS,
   LABEL_TEMPLATE_PRESETS,
   MAX_CUSTOM_LABEL_TEMPLATES,
+  MAX_LABEL_PRINTER_PROFILES,
+  addSecondLabelProfile,
   cloneLabelTemplate,
+  isSmallLabelLayout,
   newCustomTemplateId,
-  readLabelSettings,
-  writeLabelSettings,
+  readLabelPrinterConfig,
+  removeLabelProfile,
+  setDefaultLabelProfile,
+  updateLabelProfile,
+  usbPathsUsedByOtherProfiles,
+  writeLabelPrinterConfig,
   type LabelTemplateId,
-  type LabelPrinterSettings,
+  type LabelPrinterProfile,
   type LabelTemplate,
   type LabelTemplateRef,
 } from '../labels/labelSettings'
@@ -78,7 +86,7 @@ function TestLabelButton({
   setError,
   setNotice,
 }: {
-  settings: LabelPrinterSettings
+  settings: LabelPrinterProfile
   setError: (v: string | null) => void
   setNotice: (v: string | null) => void
 }) {
@@ -131,7 +139,7 @@ function FontTestLabelButton({
   setError,
   setNotice,
 }: {
-  settings: LabelPrinterSettings
+  settings: LabelPrinterProfile
   setError: (v: string | null) => void
   setNotice: (v: string | null) => void
 }) {
@@ -153,7 +161,11 @@ function FontTestLabelButton({
         setError(result.error ?? 'Font test label failed')
         return
       }
-      setNotice('Font test label sent')
+      setNotice(
+        isSmallLabelLayout(settings.layout)
+          ? 'Font test strip sent (7 labels — spaced for 40×16 stock)'
+          : 'Font test label sent',
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Font test label failed')
     } finally {
@@ -168,18 +180,70 @@ function FontTestLabelButton({
   )
 }
 
+function CalibrateGapButton({
+  settings,
+  setError,
+  setNotice,
+}: {
+  settings: LabelPrinterProfile
+  setError: (v: string | null) => void
+  setNotice: (v: string | null) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  async function calibrate() {
+    setError(null)
+    setNotice(null)
+    if (!window.electronBo?.calibrateLabelGap) {
+      setError('Gap calibration is available in the desktop app only.')
+      return
+    }
+    setBusy(true)
+    try {
+      const result = await window.electronBo.calibrateLabelGap(settings.transport, {
+        layout: settings.layout,
+      })
+      if (!result.ok) {
+        setError(result.error ?? 'Gap calibration failed')
+        return
+      }
+      setNotice('Gap calibration sent — printer should feed one label. Then print a test strip.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gap calibration failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button type="button" className="btn" onClick={() => void calibrate()} disabled={busy}>
+      {busy ? 'Calibrating…' : 'Calibrate gap (once)'}
+    </button>
+  )
+}
+
 export function LabelSettingsPage() {
   const { session } = useAuth()
   const canRead = hasPermission(session?.user, 'catalog.read')
-  const [settings, setSettings] = useState<LabelPrinterSettings>(() => readLabelSettings())
+  const [config, setConfig] = useState(() => readLabelPrinterConfig())
+  const activeProfile =
+    config.profiles.find((p) => p.id === config.activeProfileId) ?? config.profiles[0]
+  const settings = activeProfile
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [saveAsName, setSaveAsName] = useState('')
   const [detectBusy, setDetectBusy] = useState(false)
 
+  function patchActiveProfile(updater: (profile: LabelPrinterProfile) => LabelPrinterProfile) {
+    setConfig((c) => updateLabelProfile(c, c.activeProfileId, updater))
+  }
+
+  function setSettings(updater: (profile: LabelPrinterProfile) => LabelPrinterProfile) {
+    patchActiveProfile(updater)
+  }
+
   useEffect(() => {
-    writeLabelSettings(settings)
-  }, [settings])
+    writeLabelPrinterConfig(config)
+  }, [config])
 
   function applySelection(ref: LabelTemplateRef) {
     setSettings((s) => {
@@ -312,7 +376,9 @@ export function LabelSettingsPage() {
     }
     setDetectBusy(true)
     try {
-      const result = await window.electronBo.detectLabelTransport()
+      const result = await window.electronBo.detectLabelTransport({
+        excludePaths: usbPathsUsedByOtherProfiles(config, config.activeProfileId),
+      })
       if (!result.ok) {
         setError(result.error ?? 'Transport detection failed')
         return
@@ -347,7 +413,8 @@ export function LabelSettingsPage() {
       <h1 className="bo-settings-title">Label settings</h1>
       <div className="label-settings-page">
         <p className="muted label-settings-lead">
-          Printer connection, label stock size, and TSPL dot positions. Saved on this device only.
+          Up to two label printers — each with its own connection, stock size, and layout. Saved on this
+          device only.
         </p>
         {!canRead && <p className="error">Permission required: view products.</p>}
         {canRead && (
@@ -355,9 +422,77 @@ export function LabelSettingsPage() {
             {error ? <p className="error">{error}</p> : null}
             {notice ? <p className="success">{notice}</p> : null}
             <section className="panel label-settings-section">
+              <h2>Printer profiles</h2>
+              <div className="form-actions" style={{ flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {config.profiles.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={p.id === config.activeProfileId ? 'btn primary small' : 'btn ghost small'}
+                    onClick={() => setConfig((c) => ({ ...c, activeProfileId: p.id }))}
+                  >
+                    {p.name}
+                    {p.isDefault ? ' · default' : ''}
+                  </button>
+                ))}
+                {config.profiles.length < MAX_LABEL_PRINTER_PROFILES ? (
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={() => {
+                      const next = addSecondLabelProfile(config)
+                      if (next) {
+                        setConfig(next)
+                        setNotice('Added small-label printer profile — set USB path and test print.')
+                        setError(null)
+                      }
+                    }}
+                  >
+                    Add printer
+                  </button>
+                ) : null}
+              </div>
+              <div className="label-fields-grid">
+                <label className="label-field label-field--half">
+                  Profile name
+                  <input
+                    value={settings.name}
+                    maxLength={80}
+                    onChange={(e) =>
+                      patchActiveProfile((p) => ({ ...p, name: e.target.value.trim().slice(0, 80) || p.name }))
+                    }
+                  />
+                </label>
+                <label className="label-field label-field--quarter pos-settings-check" style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.isDefault}
+                    onChange={() => setConfig((c) => setDefaultLabelProfile(c, settings.id))}
+                  />
+                  Default printer
+                </label>
+                {config.profiles.length > 1 ? (
+                  <label className="label-field label-field--quarter label-field--action">
+                    Remove
+                    <button
+                      type="button"
+                      className="btn small danger"
+                      onClick={() => {
+                        setConfig((c) => removeLabelProfile(c, settings.id))
+                        setNotice('Printer profile removed.')
+                        setError(null)
+                      }}
+                    >
+                      Delete profile
+                    </button>
+                  </label>
+                ) : null}
+              </div>
+            </section>
+            <section className="panel label-settings-section">
               <h2>Transport &amp; stock</h2>
               <p className="muted label-settings-section-lead">
-                USB device path or LAN host. Defaults: 55×24&nbsp;mm label, 4&nbsp;mm gap.
+                USB device path or LAN host for <strong>{settings.name}</strong>.
               </p>
               <div className="label-fields-grid">
                 <label className="label-field label-field--quarter">
@@ -444,17 +579,115 @@ export function LabelSettingsPage() {
                     setSettings((s) => ({ ...s, layout: { ...s.layout, heightMm: Number(e.target.value) || s.layout.heightMm } }))
                   }
                 />
+                <span className="field-hint muted">
+                  Printable height (layout). Keep at 16 — tune feed with Advance height instead.
+                </span>
+              </label>
+              <label className="label-field label-field--third">
+                Advance height (mm)
+                <input
+                  type="number"
+                  min={10}
+                  step={0.1}
+                  placeholder={String(settings.layout.heightMm)}
+                  value={settings.layout.advanceHeightMm ?? ''}
+                  onChange={(e) => {
+                    const raw = e.target.value.trim()
+                    setSettings((s) => ({
+                      ...s,
+                      layout: {
+                        ...s.layout,
+                        advanceHeightMm: raw === '' ? undefined : Number(raw) || s.layout.heightMm,
+                      },
+                    }))
+                  }}
+                />
+                <span className="field-hint muted">
+                  Feed pitch only. 7/10 copies ≈ try 16.5; if last copies still blank try 16.7.
+                </span>
               </label>
               <label className="label-field label-field--third">
                 Gap (mm)
                 <input
                   type="number"
                   min={0}
+                  step={0.5}
                   value={settings.layout.gapMm}
                   onChange={(e) =>
                     setSettings((s) => ({ ...s, layout: { ...s.layout, gapMm: Number(e.target.value) || 0 } }))
                   }
                 />
+                <span className="field-hint muted">
+                  Physical gap between labels. If text prints across gaps, try 1.5 mm or Gap offset −0.5.
+                </span>
+              </label>
+              <label className="label-field label-field--third">
+                Gap offset (mm)
+                <input
+                  type="number"
+                  step={0.5}
+                  value={settings.layout.gapOffsetMm ?? 0}
+                  onChange={(e) =>
+                    setSettings((s) => ({
+                      ...s,
+                      layout: { ...s.layout, gapOffsetMm: Number(e.target.value) || 0 },
+                    }))
+                  }
+                />
+                <span className="field-hint muted">Try −0.5 if labels drift upward on batches.</span>
+              </label>
+              <label className="label-field label-field--third">
+                Feed offset (dots)
+                <input
+                  type="number"
+                  step={1}
+                  value={settings.layout.feedOffsetDots ?? 0}
+                  onChange={(e) =>
+                    setSettings((s) => ({
+                      ...s,
+                      layout: { ...s.layout, feedOffsetDots: Math.round(Number(e.target.value) || 0) },
+                    }))
+                  }
+                />
+                <span className="field-hint muted">8 dots ≈ 1 mm. Try −8 to −16 if labels feed too far.</span>
+              </label>
+              <label className="label-field label-field--third">
+                Font (small labels)
+                <select
+                  value={settings.layout.smallLabelFontMode ?? 'bitmap'}
+                  onChange={(e) =>
+                    setSettings((s) => ({
+                      ...s,
+                      layout: {
+                        ...s.layout,
+                        smallLabelFontMode: e.target.value as 'dejavu' | 'builtin' | 'bitmap',
+                      },
+                    }))
+                  }
+                >
+                  <option value="bitmap">Legacy bitmap (fonts 1–8)</option>
+                  <option value="builtin">TSC built-in (font 0)</option>
+                  <option value="dejavu">DejaVu TTF (uses font 0 until upload fixed)</option>
+                </select>
+                <span className="field-hint muted">
+                  Use Legacy bitmap for reliability. Turn off gap re-sync if labels feed blank.
+                </span>
+              </label>
+              <label className="label-field label-field--wide label-field--checkbox">
+                <span>Minimize feed after print</span>
+                <input
+                  type="checkbox"
+                  checked={settings.layout.minimizePostPrintFeed ?? false}
+                  onChange={(e) =>
+                    setSettings((s) => ({
+                      ...s,
+                      layout: { ...s.layout, minimizePostPrintFeed: e.target.checked },
+                    }))
+                  }
+                />
+                <span className="field-hint muted">
+                  Leave off — you need tear feed or you must press the feed button manually.
+                </span>
               </label>
             </div>
           </section>
@@ -578,15 +811,22 @@ export function LabelSettingsPage() {
             <div className="form-actions label-settings-actions">
               <TestLabelButton settings={settings} setError={setError} setNotice={setNotice} />
               <FontTestLabelButton settings={settings} setError={setError} setNotice={setNotice} />
+              <CalibrateGapButton settings={settings} setError={setError} setNotice={setNotice} />
               <button
                 type="button"
                 className="btn ghost"
                 onClick={() => {
-                  setSettings((s) => ({
-                    ...DEFAULT_LABEL_SETTINGS,
-                    customTemplates: s.customTemplates,
+                  const defaults =
+                    settings.layout.widthMm <= 42 ? DEFAULT_SMALL_LABEL_SETTINGS : DEFAULT_LABEL_SETTINGS
+                  patchActiveProfile((p) => ({
+                    ...p,
+                    transport: { ...defaults.transport },
+                    layout: { ...defaults.layout },
+                    template: cloneLabelTemplate(defaults.template),
+                    templateRef: defaults.templateRef,
+                    copies: defaults.copies,
                   }))
-                  setNotice('Transport, stock, copies, and layout preset reset. Custom templates kept.')
+                  setNotice('Transport, stock, copies, and layout preset reset for this profile. Custom templates kept.')
                   setError(null)
                 }}
               >

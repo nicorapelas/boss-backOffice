@@ -10,6 +10,7 @@ import {
   PosFaceLoginConsentModal,
   POS_FACE_LOGIN_CONSENT_VERSION,
 } from '../components/PosFaceLoginConsentModal'
+import { IdleImageUpload } from '../components/IdleImageUpload'
 
 function defaultCustomerDisplay(prev?: CustomerDisplaySettings): CustomerDisplaySettings {
   return {
@@ -18,6 +19,7 @@ function defaultCustomerDisplay(prev?: CustomerDisplaySettings): CustomerDisplay
       headline: prev?.idle?.headline ?? 'Welcome',
       subtext: prev?.idle?.subtext ?? '',
       imageUrl: prev?.idle?.imageUrl ?? '',
+      idleImageRevision: prev?.idle?.idleImageRevision ?? 0,
     },
     theme: {
       backgroundColor: prev?.theme?.backgroundColor ?? '#0f1419',
@@ -55,6 +57,11 @@ function defaultStaffAttendance(prev?: StaffAttendanceSettings): StaffAttendance
       typeof prev?.logoutPromptAfterMinutes === 'number' && prev.logoutPromptAfterMinutes >= 0
         ? prev.logoutPromptAfterMinutes
         : 0,
+    autoClockOutEnabled: prev?.autoClockOutEnabled === true,
+    autoClockOutTime:
+      typeof prev?.autoClockOutTime === 'string' && /^\d{2}:\d{2}$/.test(prev.autoClockOutTime)
+        ? prev.autoClockOutTime
+        : '18:00',
   }
 }
 
@@ -469,6 +476,48 @@ export function StoreSettingsPage() {
                   />
                   <span className="field-hint muted">0 = always prompt when still clocked in</span>
                 </label>
+                <label className="form-checkbox-row form-grid__full">
+                  <input
+                    type="checkbox"
+                    checked={defaultStaffAttendance(form.staffAttendance).autoClockOutEnabled}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        staffAttendance: {
+                          ...defaultStaffAttendance(f.staffAttendance),
+                          autoClockOutEnabled: e.target.checked,
+                        },
+                      }))
+                    }
+                    disabled={!canSave || !defaultStaffAttendance(form.staffAttendance).enabled}
+                  />
+                  <span>Auto clock out after shift end (on next sale)</span>
+                </label>
+                <label className="stack">
+                  Auto clock-out time
+                  <input
+                    type="time"
+                    value={defaultStaffAttendance(form.staffAttendance).autoClockOutTime}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        staffAttendance: {
+                          ...defaultStaffAttendance(f.staffAttendance),
+                          autoClockOutTime: e.target.value || '18:00',
+                        },
+                      }))
+                    }
+                    disabled={
+                      !canSave ||
+                      !defaultStaffAttendance(form.staffAttendance).enabled ||
+                      !defaultStaffAttendance(form.staffAttendance).autoClockOutEnabled
+                    }
+                  />
+                  <span className="field-hint muted">
+                    If still clocked in after this time, the next sale records clock-out at that
+                    sale&apos;s time
+                  </span>
+                </label>
               </div>
             </section>
 
@@ -618,22 +667,35 @@ export function StoreSettingsPage() {
                     disabled={!canSave}
                   />
                 </label>
-                <label className="stack form-grid__full">
-                  Idle image URL (optional)
-                  <input
-                    value={cd.idle?.imageUrl ?? ''}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        customerDisplay: patchCustomerDisplay(f, {
-                          idle: { imageUrl: e.target.value },
-                        }),
-                      }))
-                    }
-                    disabled={!canSave}
-                    placeholder="https://example.com/banner.jpg"
-                  />
-                </label>
+                <IdleImageUpload
+                  idleImageRevision={cd.idle?.idleImageRevision ?? 0}
+                  externalImageUrl={cd.idle?.imageUrl ?? ''}
+                  disabled={!canSave}
+                  onUploaded={(revision) =>
+                    setForm((f) => ({
+                      ...f,
+                      customerDisplay: patchCustomerDisplay(f, {
+                        idle: { idleImageRevision: revision, imageUrl: '' },
+                      }),
+                    }))
+                  }
+                  onRemoved={() =>
+                    setForm((f) => ({
+                      ...f,
+                      customerDisplay: patchCustomerDisplay(f, {
+                        idle: { idleImageRevision: 0, imageUrl: '' },
+                      }),
+                    }))
+                  }
+                  onExternalUrlChange={(url) =>
+                    setForm((f) => ({
+                      ...f,
+                      customerDisplay: patchCustomerDisplay(f, {
+                        idle: { imageUrl: url },
+                      }),
+                    }))
+                  }
+                />
                 <label className="stack">
                   Background colour
                   <input
