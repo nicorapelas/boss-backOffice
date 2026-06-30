@@ -3010,3 +3010,86 @@ html[data-bo-theme='light'] .pos-terminal-status--offline {
   background: rgba(100, 116, 139, 0.12);
   color: #64748b;
 }
+
+.house-account-statement-dialog {
+  max-width: min(96vw, 52rem);
+}
+
+.house-account-statement-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.house-account-statement-header h3 {
+  margin: 0 0 0.35rem;
+}
+
+.house-account-statement-account-block {
+  text-align: right;
+}
+
+.house-account-statement-meta,
+.house-account-statement-balances {
+  margin: 0.5rem 0 1rem;
+}
+
+.house-account-statement-balances {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.house-account-statement-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.house-account-statement-charge-head td {
+  border-top: 1px solid #333;
+  padding-top: 0.65rem;
+}
+
+.house-account-statement-item td {
+  font-size: 0.92rem;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .house-account-statement-printable,
+  .house-account-statement-printable * {
+    visibility: visible;
+  }
+
+  .house-account-statement-printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000;
+    background: #fff;
+    padding: 1rem;
+  }
+
+  .house-account-statement-screen-only,
+  .house-account-statement-backdrop {
+    display: none !important;
+  }
+
+  .house-account-statement-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .house-account-statement-table th,
+  .house-account-statement-table td {
+    border-bottom: 1px solid #ccc;
+    padding: 0.35rem 0.5rem;
+  }
+}

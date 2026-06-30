@@ -681,6 +681,71 @@ export interface HouseAccountLedgerRow {
   createdAt?: string
 }
 
+/** GET /house-accounts/:id/statement */
+export interface HouseAccountStatementLineItem {
+  name: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+export interface HouseAccountStatementChargeDetail {
+  saleId?: string
+  tillCode?: string
+  purchaseOrderNumber?: string
+  onAccountAmount: number
+  saleTotal: number
+  cashAmount?: number
+  cardAmount?: number
+  items: HouseAccountStatementLineItem[]
+  summaryOnly?: boolean
+}
+
+export interface HouseAccountStatementRow {
+  id: string
+  date: string
+  kind: 'charge' | 'payment'
+  debit: number
+  credit: number
+  balanceAfter: number
+  note?: string
+  cashAmount?: number
+  cardAmount?: number
+  charge?: HouseAccountStatementChargeDetail
+}
+
+export interface HouseAccountStatement {
+  generatedAt: string
+  periodMode: 'since_last_zero' | 'custom'
+  periodFrom: string
+  periodTo: string
+  lastZeroAt: string | null
+  store: {
+    name: string
+    addressLines: string[]
+    phone: string
+    vatNumber: string
+  }
+  account: {
+    _id: string
+    accountNumber: string
+    name: string
+    phone: string
+    contactPerson: string
+    email: string
+    vatNumber: string
+    companyRegistrationNumber: string
+    addressLines: string[]
+    paymentTerms: string
+    balance: number
+    creditLimit: number | null
+    status: string
+  }
+  openingBalance: number
+  closingBalance: number
+  rows: HouseAccountStatementRow[]
+}
+
 export interface LayByListItem {
   _id: string
   layByNumber: string

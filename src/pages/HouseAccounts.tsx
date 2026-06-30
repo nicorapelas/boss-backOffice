@@ -9,6 +9,7 @@ import {
   type HouseAccountPaymentTerms,
 } from '../houseAccounts/paymentTerms'
 import { BoShell } from '../layouts/BoShell'
+import { HouseAccountStatementModal } from '../components/HouseAccountStatementModal'
 
 function round2(n: number) {
   return Math.round(n * 100) / 100
@@ -230,6 +231,7 @@ export function HouseAccountsPage() {
   const [payCash, setPayCash] = useState('')
   const [payCard, setPayCard] = useState('')
   const [payNote, setPayNote] = useState('')
+  const [statementAccount, setStatementAccount] = useState<HouseAccountRow | null>(null)
 
   const totalOwed = useMemo(() => accounts.reduce((s, a) => s + (a.balance ?? 0), 0), [accounts])
   const editingAccount = editId ? accounts.find((a) => a._id === editId) : null
@@ -498,6 +500,14 @@ export function HouseAccountsPage() {
                         <button
                           type="button"
                           className="btn ghost small"
+                          onClick={() => setStatementAccount(r)}
+                          disabled={busy}
+                        >
+                          Statement
+                        </button>{' '}
+                        <button
+                          type="button"
+                          className="btn ghost small"
                           onClick={() => void loadLedger(r._id)}
                           disabled={busy}
                         >
@@ -642,6 +652,7 @@ export function HouseAccountsPage() {
           ) : null}
         </>
       )}
+      <HouseAccountStatementModal account={statementAccount} onClose={() => setStatementAccount(null)} />
     </BoShell>
   )
 }
