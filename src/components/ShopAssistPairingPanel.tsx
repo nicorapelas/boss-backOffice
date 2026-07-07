@@ -34,9 +34,9 @@ export function ShopAssistPairingPanel() {
         ShopAssist (mobile)
       </h2>
       <p className="muted bo-settings-section-lead">
-        Warehouse and floor staff: install <strong>ShopAssist</strong> (Expo), open <strong>Server</strong> on first
-        launch, paste the API URL below (or scan the QR to copy on another device), then sign in with your Back Office
-        account.
+        Install <strong>ShopAssist</strong> from the app store. On first launch set the server URL below (or scan the
+        QR), then the <strong>store admin</strong> enrolls the phone once. Floor staff sign in with badge or password
+        after that.
       </p>
       {warning ? <p className="error bo-shopassist-pairing-warning">{warning}</p> : null}
       <div className="bo-shopassist-pairing-body">
@@ -52,8 +52,8 @@ export function ShopAssistPairingPanel() {
             </button>
           </div>
           <p className="muted bo-shopassist-pairing-hint">
-            Requires <code>catalog.read</code> to sign in; <code>catalog.write</code> to adjust stock and barcode.
-            Managers can also edit name and price.
+            Staff need <code>catalog.read</code> to sign in; <code>catalog.write</code> to adjust stock and barcode.
+            Managers can also edit name and price. Admin enrollment is required before staff can use the app.
           </p>
         </div>
       </div>

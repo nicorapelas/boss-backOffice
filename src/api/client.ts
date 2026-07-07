@@ -410,6 +410,45 @@ export async function fetchProductPhotoObjectUrl(productId: string, revision: nu
   return URL.createObjectURL(blob)
 }
 
+export async function searchCatalogProducts(q: string, limit = 30) {
+  const params = new URLSearchParams({ q, limit: String(limit) })
+  return apiFetch<import('./types').Product[]>(`/products/search?${params}`)
+}
+
+export async function lookupCatalogProduct(skuOrBarcode: string) {
+  const raw = skuOrBarcode.trim()
+  const digitsOnly = /^\d+$/.test(raw)
+  const params = digitsOnly && raw.length >= 8
+    ? new URLSearchParams({ barcode: raw })
+    : new URLSearchParams({ sku: raw })
+  return apiFetch<import('./types').Product>(`/products/lookup?${params}`)
+}
+
+export async function matchInvoiceLines(
+  supplier: string,
+  lines: import('./types').InvoiceLineInput[],
+) {
+  return apiFetch<import('./types').InvoiceMatchResult>('/products/match', {
+    method: 'POST',
+    body: JSON.stringify({ supplier, lines }),
+  })
+}
+
+export async function receiveInvoice(payload: {
+  supplier: string
+  stockMode: 'add' | 'set'
+  lines: import('./types').ReceiveLineInput[]
+}) {
+  return apiFetch<import('./types').ReceiveInvoiceResult>('/products/receive-invoice', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function listSuppliers() {
+  return apiFetch<import('./types').Supplier[]>('/suppliers')
+}
+
 export async function registerRequest(email: string, password: string) {
   return apiFetch<{ id: string; email: string; role: string }>('/auth/register', {
     method: 'POST',

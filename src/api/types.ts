@@ -63,6 +63,92 @@ export interface Supplier {
   notes?: string | null
 }
 
+// ---- Invoice intake (supplier-invoice → catalog matching + apply) ----
+
+export type InvoiceMatchConfidence = 'exact' | 'likely' | 'uncertain' | 'new'
+
+export type InvoiceLineInput = {
+  code?: string | null
+  description: string
+  qty?: number | null
+  unitCost?: number | null
+}
+
+export type InvoiceMatchCandidate = {
+  productId: string
+  sku: string
+  name: string
+  longName?: string | null
+  category?: string | null
+  price?: number
+  stock?: number
+  score: number
+  ratio: number
+}
+
+export type InvoiceMatchedLine = {
+  input: InvoiceLineInput
+  confidence: InvoiceMatchConfidence
+  matchedBy: 'supplier-code' | 'fuzzy' | 'none'
+  candidates: InvoiceMatchCandidate[]
+}
+
+export type InvoiceMatchResult = {
+  supplier: string
+  lines: InvoiceMatchedLine[]
+  stats: { exact: number; likely: number; uncertain: number; neu: number }
+}
+
+export type ReceiveNewProduct = {
+  name: string
+  sku: string
+  category?: string | null
+  subCategory?: string | null
+  barcode?: string | null
+  keywords?: string[]
+  trackInventory?: boolean
+}
+
+export type ReceiveLineInput = {
+  action: 'update' | 'create' | 'skip'
+  productId?: string
+  newProduct?: ReceiveNewProduct
+  qty?: number | null
+  unitCost?: number | null
+  supplierCode?: string | null
+  supplierDescription?: string | null
+  updatePrice?: boolean
+  priceOverride?: number | null
+}
+
+export type ReceiveResultLine = {
+  action: ReceiveLineInput['action']
+  ok: boolean
+  message?: string
+  productId?: string
+  sku?: string
+  name?: string
+  category?: string | null
+  barcode?: string | null
+  previousStock?: number
+  newStock?: number
+  unitCost?: number | null
+  previousPrice?: number
+  newPrice?: number
+  priceChanged?: boolean
+  supplierRefWritten?: boolean
+  created?: boolean
+}
+
+export type ReceiveInvoiceResult = {
+  supplier: string
+  stockMode: 'add' | 'set'
+  applied: number
+  failed: number
+  skipped: number
+  lines: ReceiveResultLine[]
+}
+
 export type SupplierOfferProductRef = { _id: string; name: string; sku: string }
 
 export type SupplierOfferSupplierRef = { _id: string; name: string; code: string; active?: boolean }
@@ -321,6 +407,26 @@ export type StaffShiftPerformanceResponse = {
   attendanceEnabled: boolean
   generatedAt: string
   staff: StaffShiftPerformanceRow[]
+}
+
+export type OpenAttendanceSessionRow = {
+  sessionId: string
+  userId: string
+  displayName: string
+  tillCode: string | null
+  clockInAt: string
+  clockInMethod: string
+  elapsedMinutes: number
+}
+
+export type OpenAttendanceSessionsResponse = {
+  attendanceEnabled: boolean
+  sessions: OpenAttendanceSessionRow[]
+}
+
+export type ClockOutAllAttendanceResponse = {
+  clockedOut: number
+  sessions: OpenAttendanceSessionRow[]
 }
 
 export type UserHrProfile = {
@@ -604,6 +710,8 @@ export interface StoreSettings {
   nextHouseAccountSeq?: number
   /** Present on GET /settings/store; synced with POS preset buttons. */
   productPresets?: ProductPresetsState
+  /** Stock-receiving markup rules (default % + per-category overrides). */
+  receiving?: { defaultMarkupPct: number; markupByCategory: Record<string, number> }
   customerDisplay?: CustomerDisplaySettings
   loyaltyProgram?: LoyaltyProgramConfig
   /** POS staff login at till: badge scan or face recognition. */
@@ -646,6 +754,18 @@ export interface PosTerminalRow {
   openShiftOpenedAt?: string
   createdAt?: string
   updatedAt?: string
+}
+
+export interface ShopAssistDeviceRow {
+  deviceId: string
+  storeEndpoint: string
+  label?: string
+  platform?: string
+  appVersion?: string
+  enrolledAt: string
+  lastSeenAt: string
+  enrolledByEmail?: string
+  revokedAt?: string | null
 }
 
 export interface HouseAccountRow {

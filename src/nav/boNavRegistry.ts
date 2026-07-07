@@ -37,6 +37,14 @@ export const BO_NAV_ENTRIES: BoNavEntry[] = [
     permission: 'catalog.read',
   },
   {
+    id: 'receive-stock',
+    title: 'Receive stock',
+    path: '/receive-stock',
+    category: 'Catalog',
+    keywords: ['invoice', 'intake', 'receive', 'purchase', 'stock in', 'supplier invoice', 'restock', 'goods received'],
+    permission: 'catalog.write',
+  },
+  {
     id: 'label-settings',
     title: 'Label settings',
     path: '/label-settings',

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { apiFetch } from '../api/client'
-import type { BackOfficeUser, BoRole } from '../api/types'
+import type { BackOfficeUser, BoRole, OpenAttendanceSessionsResponse } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
+import { ConfirmModal } from '../components/ConfirmModal'
 import { FaceEnrollmentPanel } from '../components/FaceEnrollmentPanel'
 import { UserHrProfilePanel } from '../components/UserHrProfilePanel'
 import { UserScoreCardPanel } from '../components/UserScoreCardPanel'
@@ -43,6 +44,9 @@ export function UsersPage() {
   const [badgeSectionOpen, setBadgeSectionOpen] = useState<Record<string, boolean>>({})
   const [createBadgeVisible, setCreateBadgeVisible] = useState(false)
   const [userSearch, setUserSearch] = useState('')
+  const [openSessions, setOpenSessions] = useState<OpenAttendanceSessionsResponse | null>(null)
+  const [clockOutAllBusy, setClockOutAllBusy] = useState(false)
+  const [clockOutConfirmOpen, setClockOutConfirmOpen] = useState(false)
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -79,17 +83,28 @@ export function UsersPage() {
     }
   }
 
+  async function loadOpenSessions() {
+    try {
+      const data = await apiFetch<OpenAttendanceSessionsResponse>('/attendance/open-sessions')
+      setOpenSessions(data)
+    } catch {
+      setOpenSessions(null)
+    }
+  }
+
   async function load() {
     if (!canManage) return
     setBusy(true)
     setError(null)
     try {
-      const [list, rlist] = await Promise.all([
+      const [list, rlist, attendance] = await Promise.all([
         apiFetch<BackOfficeUser[]>('/users'),
         apiFetch<BoRole[]>('/roles'),
+        apiFetch<OpenAttendanceSessionsResponse>('/attendance/open-sessions'),
       ])
       setUsers(list)
       setRoles(rlist)
+      setOpenSessions(attendance)
       const cashier = rlist.find((r) => r.slug === 'cashier')
       setNewUser((nu) => ({
         ...nu,
@@ -262,6 +277,34 @@ export function UsersPage() {
     }
   }
 
+  function openClockOutConfirm() {
+    if (!openSessions?.sessions.length) return
+    setClockOutConfirmOpen(true)
+  }
+
+  async function confirmClockOutAllOnPos() {
+    if (!openSessions?.sessions.length) return
+    setClockOutAllBusy(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const result = await apiFetch<{ clockedOut: number }>('/attendance/clock-out-all', {
+        method: 'POST',
+      })
+      setClockOutConfirmOpen(false)
+      setNotice(
+        result.clockedOut === 1
+          ? 'Clocked out 1 staff member on POS.'
+          : `Clocked out ${result.clockedOut} staff on POS.`,
+      )
+      await loadOpenSessions()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clock out staff on POS')
+    } finally {
+      setClockOutAllBusy(false)
+    }
+  }
+
   return (
     <BoShell>
       <h1>User Management</h1>
@@ -276,6 +319,29 @@ export function UsersPage() {
             <button type="button" className="btn primary" onClick={() => void load()} disabled={busy}>
               {busy ? 'Refreshing…' : 'Refresh users'}
             </button>
+            <div className="users-attendance-actions">
+              {openSessions?.attendanceEnabled === false ? (
+                <span className="muted">Staff attendance disabled in store settings.</span>
+              ) : (
+                <>
+                  <span className="muted users-attendance-status">
+                    {openSessions === null
+                      ? 'Checking POS clock-ins…'
+                      : openSessions.sessions.length === 0
+                        ? 'No staff clocked in on POS'
+                        : `${openSessions.sessions.length} staff clocked in on POS`}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={openClockOutConfirm}
+                    disabled={clockOutAllBusy || busy || !openSessions?.sessions.length}
+                  >
+                    {clockOutAllBusy ? 'Clocking out…' : 'Clock out all on POS'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {error && <p className="error">{error}</p>}
@@ -674,6 +740,36 @@ export function UsersPage() {
               <p className="muted users-search-empty">No users match your search.</p>
             ) : null}
           </section>
+
+          <ConfirmModal
+            open={clockOutConfirmOpen}
+            title="Clock out all on POS?"
+            confirmLabel={clockOutAllBusy ? 'Clocking out…' : 'Clock out all'}
+            busy={clockOutAllBusy}
+            onConfirm={() => void confirmClockOutAllOnPos()}
+            onCancel={() => {
+              if (!clockOutAllBusy) setClockOutConfirmOpen(false)
+            }}
+          >
+            <p>
+              Clock out{' '}
+              <strong>{openSessions?.sessions.length ?? 0}</strong> staff currently clocked in at the
+              tills?
+            </p>
+            {openSessions && openSessions.sessions.length > 0 ? (
+              <ul className="confirm-modal-staff-list">
+                {openSessions.sessions.map((session) => (
+                  <li key={session.sessionId}>
+                    {session.displayName}
+                    {session.tillCode ? (
+                      <span className="muted"> · {session.tillCode}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="muted">They can clock in again when they return.</p>
+          </ConfirmModal>
         </>
       )}
     </BoShell>

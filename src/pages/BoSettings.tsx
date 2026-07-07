@@ -1,3 +1,4 @@
+import { ShopAssistDevicesPanel } from '../components/ShopAssistDevicesPanel'
 import { ShopAssistPairingPanel } from '../components/ShopAssistPairingPanel'
 import { BoShell } from '../layouts/BoShell'
 import { useBoTheme } from '../theme/BoThemeContext'
@@ -23,6 +24,7 @@ export function BoSettingsPage() {
         <p className="muted">Personal options for this device. Store-wide configuration stays under Store settings.</p>
 
         <ShopAssistPairingPanel />
+        <ShopAssistDevicesPanel />
 
         <section className="bo-settings-section" aria-labelledby="bo-appearance-heading">
           <h2 id="bo-appearance-heading" className="bo-settings-section-title">

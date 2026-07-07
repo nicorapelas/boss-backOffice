@@ -11,7 +11,7 @@ export function getShopAssistPairingUrl(): { url: string; warning: string | null
     return {
       url: raw,
       warning:
-        'This install uses localhost — phones cannot reach that. Rebuild with your shop API URL (LAN IP or Cloudflare tunnel, e.g. https://api-dev.jacobscycles.com/api).',
+        'This install uses localhost — phones cannot reach that. Rebuild with your shop API URL (Cloudflare prod: https://api.jacobscycles.com/api, dev: https://api-dev.jacobscycles.com/api).',
     }
   }
   return { url: raw, warning: null }

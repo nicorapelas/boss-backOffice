@@ -14,6 +14,7 @@ import { MigrationAuditPage } from './pages/MigrationAudit'
 import { CatalogMigrationPage } from './pages/CatalogMigration'
 import { StoreBackupPage } from './pages/StoreBackup'
 import { Products } from './pages/Products'
+import { ReceiveStockPage } from './pages/ReceiveStock'
 import { SuppliersPage } from './pages/Suppliers'
 import { StoreSettingsPage } from './pages/StoreSettings'
 import { StoreVoucherPage } from './pages/StoreVoucher'
@@ -38,6 +39,7 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/products" element={<Products />} />
+            <Route path="/receive-stock" element={<ReceiveStockPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/pos-terminals" element={<PosTerminalsPage />} />
