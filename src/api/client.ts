@@ -650,3 +650,139 @@ export async function deleteEntireCatalog(confirm: string) {
     body: JSON.stringify({ confirm }),
   })
 }
+
+// ---- Invoice intake service (separate Steve service) ----
+
+const intakeBase = () => import.meta.env.VITE_INVOICE_INTAKE_URL?.replace(/\/$/, '') ?? ''
+
+function intakeHeaders(): HeadersInit {
+  const key = import.meta.env.VITE_INVOICE_INTAKE_API_KEY
+  return key ? { 'X-Api-Key': key } : {}
+}
+
+export function isInvoiceIntakeConfigured(): boolean {
+  return Boolean(intakeBase())
+}
+
+export async function uploadInvoicePhoto(file: File, supplier?: string) {
+  return uploadInvoiceFiles([file], supplier)
+}
+
+/** Upload one PDF or one/more page images. Pages are processed in file-list order. */
+export async function uploadInvoiceFiles(files: File[], supplier?: string) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured (VITE_INVOICE_INTAKE_URL).')
+  if (!files.length) throw new Error('No files selected.')
+  const form = new FormData()
+  if (files.length === 1) {
+    form.append('file', files[0])
+  } else {
+    for (const f of files) form.append('files', f)
+  }
+  if (supplier?.trim()) form.append('supplier', supplier.trim())
+  const res = await fetch(`${base}/intake`, {
+    method: 'POST',
+    headers: intakeHeaders(),
+    body: form,
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string | { msg?: string }[] }
+    const detail = body.detail
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d) => (typeof d === 'object' && d?.msg ? d.msg : String(d))).join('; ')
+          : `Invoice intake failed (${res.status})`
+    throw new Error(message)
+  }
+  return res.json() as Promise<import('./types').InvoiceIntakeResponse>
+}
+
+export async function fetchInvoiceDraft(draftId: string) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const res = await fetch(`${base}/drafts/${encodeURIComponent(draftId)}`, {
+    headers: intakeHeaders(),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail || `Draft not found (${res.status})`)
+  }
+  return res.json() as Promise<import('./types').InvoiceIntakeDraft>
+}
+
+export async function markInvoiceDraftApplied(draftId: string) {
+  const base = intakeBase()
+  if (!base) return
+  await fetch(`${base}/drafts/${encodeURIComponent(draftId)}/applied`, {
+    method: 'POST',
+    headers: intakeHeaders(),
+  }).catch(() => {})
+}
+
+export async function layoutOcr(file: File, supplierId?: string, page = 1) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const form = new FormData()
+  form.append('file', file)
+  if (supplierId) form.append('supplier_id', supplierId)
+  if (page > 1) form.append('page', String(page))
+  const res = await fetch(`${base}/layouts/ocr`, { method: 'POST', headers: intakeHeaders(), body: form })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail || `Layout OCR failed (${res.status})`)
+  }
+  return res.json() as Promise<import('./types').LayoutOcrPageResult>
+}
+
+export async function listInvoiceLayouts() {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const res = await fetch(`${base}/layouts`, { headers: intakeHeaders() })
+  if (!res.ok) throw new Error(`List layouts failed (${res.status})`)
+  return res.json() as Promise<import('./types').LayoutSummary[]>
+}
+
+export async function getInvoiceLayout(supplierId: string) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const res = await fetch(`${base}/layouts/${encodeURIComponent(supplierId)}`, { headers: intakeHeaders() })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail || `Layout not found (${res.status})`)
+  }
+  return res.json() as Promise<import('./types').InvoiceLayoutProfile>
+}
+
+export async function saveInvoiceLayout(supplierId: string, profile: import('./types').InvoiceLayoutProfile) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const res = await fetch(`${base}/layouts/${encodeURIComponent(supplierId)}`, {
+    method: 'PUT',
+    headers: { ...intakeHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(profile),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail || `Save layout failed (${res.status})`)
+  }
+  return res.json() as Promise<import('./types').InvoiceLayoutProfile>
+}
+
+export async function testInvoiceLayout(supplierId: string, file: File) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${base}/layouts/${encodeURIComponent(supplierId)}/test`, {
+    method: 'POST',
+    headers: intakeHeaders(),
+    body: form,
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail || `Layout test failed (${res.status})`)
+  }
+  return res.json() as Promise<import('./types').LayoutTestResponse>
+}

@@ -80,7 +80,7 @@ html[data-bo-theme='cosmic'] .btn {
 html[data-bo-theme='cosmic'] .btn.primary {
   background: #92cf9c;
   border-color: #5edb8c;
-  color: #fff;
+  color: #1e1e1f;
 }
 
 html[data-bo-theme='cosmic'] .btn.ghost {

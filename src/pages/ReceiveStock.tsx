@@ -1,8 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import { BoShell } from '../layouts/BoShell'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
-import { apiFetch, listSuppliers, matchInvoiceLines, receiveInvoice } from '../api/client'
+import {
+  apiFetch,
+  fetchInvoiceDraft,
+  isInvoiceIntakeConfigured,
+  listSuppliers,
+  markInvoiceDraftApplied,
+  matchInvoiceLines,
+  receiveInvoice,
+  uploadInvoiceFiles,
+} from '../api/client'
 import type {
   InvoiceLineInput,
   InvoiceMatchResult,
@@ -20,6 +30,7 @@ import {
   readLabelPrinterConfig,
 } from '../labels/labelSettings'
 import { nextSequentialSku, suggestCreateName, variantGroupKey } from '../utils/receiveStockSku'
+import { buildDecisionsFromMatch } from '../utils/receiveStockDecisions'
 
 type EditLine = {
   id: string
@@ -164,6 +175,8 @@ function parsePastedLines(raw: string): EditLine[] {
 export function ReceiveStockPage() {
   const { session } = useAuth()
   const canWrite = hasPermission(session?.user, 'catalog.write')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const intakeEnabled = isInvoiceIntakeConfigured()
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplier, setSupplier] = useState('')
@@ -183,6 +196,10 @@ export function ReceiveStockPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [lookupRowIdx, setLookupRowIdx] = useState<number | null>(null)
   const [catalogSkus, setCatalogSkus] = useState<string[]>([])
+  const [draftId, setDraftId] = useState<string | null>(null)
+  const [intakeBusy, setIntakeBusy] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const loadedDraftRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!canWrite) return
@@ -207,6 +224,61 @@ export function ReceiveStockPage() {
     },
     [receiving],
   )
+
+  const hydrateCatalogSkusForMatch = useCallback((res: InvoiceMatchResult, initial: RowDecision[]) => {
+    setDecisions(initial)
+    void apiFetch<Product[]>('/products')
+      .then((list) => {
+        const skus = list.map((p) => p.sku)
+        setCatalogSkus(skus)
+        setDecisions((prev) => applyAutoCreateSkus(prev, res.lines, skus))
+      })
+      .catch(() => setCatalogSkus([]))
+  }, [])
+
+  const loadDraft = useCallback(
+    async (id: string) => {
+      setError(null)
+      setNotice(null)
+      setResult(null)
+      setIntakeBusy(true)
+      try {
+        const draft = await fetchInvoiceDraft(id)
+        setDraftId(draft.draftId)
+        setSupplier(draft.supplier)
+        setLines(
+          draft.extracted.lines.map((l) => ({
+            id: newId(),
+            code: l.code ?? '',
+            description: l.description,
+            qty: l.qty != null ? String(l.qty) : '',
+            unitCost: l.unitCost != null ? String(l.unitCost) : '',
+          })),
+        )
+        const initial = buildDecisionsFromMatch(draft.match)
+        setMatchResult(draft.match)
+        hydrateCatalogSkusForMatch(draft.match, initial)
+        const warns = draft.extracted.parseMeta.warnings
+        const warnText = warns.length ? ` Warnings: ${warns.join('; ')}` : ''
+        setNotice(
+          `Loaded AI draft (${draft.extracted.lines.length} lines, supplier from ${draft.supplierResolvedFrom}).${warnText}`,
+        )
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to load draft')
+      } finally {
+        setIntakeBusy(false)
+      }
+    },
+    [hydrateCatalogSkusForMatch],
+  )
+
+  useEffect(() => {
+    const id = searchParams.get('draft')
+    if (!id || !canWrite || !intakeEnabled) return
+    if (loadedDraftRef.current === id) return
+    loadedDraftRef.current = id
+    void loadDraft(id)
+  }, [searchParams, canWrite, intakeEnabled, loadDraft])
 
   const computePreviewPrice = useCallback(
     (unitCost: number, category: string | null | undefined): number => {
@@ -263,30 +335,16 @@ export function ReceiveStockPage() {
     setMatching(true)
     try {
       const res = await matchInvoiceLines(supplier.trim(), payload)
-      const initial: RowDecision[] = res.lines.map((ml) => {
-        const top = ml.candidates[0]
-        const isNew = ml.confidence === 'new' || !top
-        return {
-          action: isNew ? 'create' : 'update',
-          productId: top?.productId ?? null,
-          manualPick: null,
-          priceInput: '',
-          updatePrice: true,
-          newName: isNew ? suggestCreateName(ml.input.description) : ml.input.description,
-          newSku: '',
-          newCategory: '',
-          newSkuManuallyEdited: false,
-        }
-      })
+      const initial = buildDecisionsFromMatch(res)
       setMatchResult(res)
-      setDecisions(initial)
-      void apiFetch<Product[]>('/products')
-        .then((list) => {
-          const skus = list.map((p) => p.sku)
-          setCatalogSkus(skus)
-          setDecisions((prev) => applyAutoCreateSkus(prev, res.lines, skus))
-        })
-        .catch(() => setCatalogSkus([]))
+      setDraftId(null)
+      loadedDraftRef.current = null
+      if (searchParams.get('draft')) {
+        const next = new URLSearchParams(searchParams)
+        next.delete('draft')
+        setSearchParams(next, { replace: true })
+      }
+      hydrateCatalogSkusForMatch(res, initial)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Match failed')
     } finally {
@@ -482,6 +540,7 @@ export function ReceiveStockPage() {
       const res = await receiveInvoice({ supplier: supplier.trim(), stockMode, lines: payload })
       setResult(res)
       setNotice(`Applied ${res.applied}, skipped ${res.skipped}${res.failed ? `, failed ${res.failed}` : ''}.`)
+      if (draftId) void markInvoiceDraftApplied(draftId)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Apply failed')
     } finally {
@@ -537,6 +596,36 @@ export function ReceiveStockPage() {
     setError(null)
     setNotice(null)
     setLookupRowIdx(null)
+    setDraftId(null)
+    loadedDraftRef.current = null
+    if (searchParams.get('draft')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('draft')
+      setSearchParams(next, { replace: true })
+    }
+  }
+
+  async function handlePhotoUpload(fileList: FileList | File[]) {
+    const files = Array.from(fileList)
+    if (!files.length) return
+    setError(null)
+    setNotice(null)
+    setResult(null)
+    setIntakeBusy(true)
+    try {
+      const res = await uploadInvoiceFiles(files)
+      loadedDraftRef.current = res.draftId
+      setSearchParams({ draft: res.draftId }, { replace: true })
+      await loadDraft(res.draftId)
+      if (res.warnings?.length) {
+        setNotice((prev) => `${prev ?? ''} ${res.warnings!.join(' ')}`.trim())
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Invoice photo intake failed')
+    } finally {
+      setIntakeBusy(false)
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    }
   }
 
   return (
@@ -585,6 +674,32 @@ export function ReceiveStockPage() {
 
           <section className="panel">
             <h2>1 · Invoice lines</h2>
+            {intakeEnabled && (
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--panel-alt, #f4f4f5)', borderRadius: '6px' }}>
+                <strong>Invoice photo / PDF</strong>
+                <p className="muted" style={{ margin: '0.35rem 0' }}>
+                  Upload a PDF or one/more page photos (select several images for multipage). OCR + local AI on Steve
+                  merges pages into one draft. Or drop files in <code>~/cognipos-inbox/inbox/</code>.
+                </p>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*,application/pdf,.pdf"
+                  multiple
+                  disabled={intakeBusy}
+                  onChange={(e) => {
+                    const list = e.target.files
+                    if (list?.length) void handlePhotoUpload(list)
+                  }}
+                />
+                {intakeBusy && <p className="muted">Processing invoice…</p>}
+                {draftId && <p className="muted">Draft: {draftId}</p>}
+                <p className="muted" style={{ marginTop: '0.5rem' }}>
+                  New supplier format?{' '}
+                  <Link to="/invoice-layouts">Teach invoice layout</Link>
+                </p>
+              </div>
+            )}
             <p className="muted">
               Paste from a spreadsheet (tab or <code>|</code> separated: code, description, qty, unit cost) or edit
               the rows directly.

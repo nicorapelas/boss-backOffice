@@ -15,6 +15,7 @@ import { IdleImageUpload } from '../components/IdleImageUpload'
 function defaultCustomerDisplay(prev?: CustomerDisplaySettings): CustomerDisplaySettings {
   return {
     enabled: prev?.enabled !== false,
+    showDigitalClock: prev?.showDigitalClock !== false,
     idle: {
       headline: prev?.idle?.headline ?? 'Welcome',
       subtext: prev?.idle?.subtext ?? '',
@@ -33,6 +34,7 @@ function patchCustomerDisplay(
   f: Partial<StoreSettings>,
   patch: {
     enabled?: boolean
+    showDigitalClock?: boolean
     idle?: Partial<NonNullable<CustomerDisplaySettings['idle']>>
     theme?: Partial<NonNullable<CustomerDisplaySettings['theme']>>
     footerText?: string
@@ -43,6 +45,7 @@ function patchCustomerDisplay(
     ...base,
     ...patch,
     enabled: patch.enabled ?? base.enabled,
+    showDigitalClock: patch.showDigitalClock ?? base.showDigitalClock,
     idle: { ...base.idle, ...patch.idle },
     theme: { ...base.theme, ...patch.theme },
     footerText: patch.footerText ?? base.footerText,
@@ -633,6 +636,21 @@ export function StoreSettingsPage() {
                   disabled={!canSave}
                 />
                 <span>Enable customer display content</span>
+              </label>
+
+              <label className="form-checkbox-row form-grid__full">
+                <input
+                  type="checkbox"
+                  checked={cd.showDigitalClock !== false}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      customerDisplay: patchCustomerDisplay(f, { showDigitalClock: e.target.checked }),
+                    }))
+                  }
+                  disabled={!canSave}
+                />
+                <span>Show digital clocks on POS login, till header, and customer idle screen</span>
               </label>
 
               <div className="form-grid form-grid--2">

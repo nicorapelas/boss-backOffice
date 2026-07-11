@@ -45,6 +45,14 @@ export const BO_NAV_ENTRIES: BoNavEntry[] = [
     permission: 'catalog.write',
   },
   {
+    id: 'invoice-layouts',
+    title: 'Invoice layouts',
+    path: '/invoice-layouts',
+    category: 'Catalog',
+    keywords: ['invoice', 'layout', 'ocr', 'teach', 'supplier template', 'intake'],
+    permission: 'catalog.write',
+  },
+  {
     id: 'label-settings',
     title: 'Label settings',
     path: '/label-settings',

@@ -149,6 +149,115 @@ export type ReceiveInvoiceResult = {
   lines: ReceiveResultLine[]
 }
 
+// ---- Invoice intake service (Steve AI layer, disk drafts) ----
+
+export type InvoiceIntakeDraft = {
+  draftId: string
+  status: 'pending_review' | 'rejected' | 'applied' | 'expired'
+  supplier: string
+  supplierResolvedFrom: 'header' | 'override' | 'manual'
+  source: { filename: string; sha256: string; relativePath: string }
+  extracted: {
+    supplierHint?: string | null
+    invoiceNumber?: string | null
+    invoiceDate?: string | null
+    lines: Array<{
+      code?: string | null
+      description: string
+      qty?: number | null
+      unitCost?: number | null
+      lineConfidence?: 'high' | 'medium' | 'low'
+      rawText?: string | null
+    }>
+    parseMeta: {
+      overallConfidence: number
+      warnings: string[]
+      ocrEngine?: string | null
+      usedVisionFallback?: boolean
+    }
+  }
+  match: InvoiceMatchResult
+  createdAt: string
+  createdBy?: string
+  reviewedAt?: string | null
+  appliedAt?: string | null
+}
+
+export type InvoiceIntakeResponse = {
+  draftId: string
+  supplier: string
+  lineCount: number
+  stats: InvoiceMatchResult['stats']
+  deepLink: string
+  warnings?: string[]
+}
+
+export type LayoutNormRect = { x0: number; y0: number; x1: number; y1: number }
+
+export type LayoutOcrBlock = {
+  text: string
+  confidence: number
+  bbox?: LayoutNormRect | null
+}
+
+export type LayoutOcrPageResult = {
+  fullText: string
+  meanConfidence: number
+  blocks: LayoutOcrBlock[]
+  pageWidth: number
+  pageHeight: number
+  imageBase64?: string | null
+  pageNumber?: number
+  pageCount?: number
+  sourceFilename?: string | null
+}
+
+export type LayoutColumnField = {
+  key: 'code' | 'description' | 'qty' | 'unitCost' | 'lineTotal'
+  headerPatterns: string[]
+  columnX?: number | null
+  valuePattern?: string | null
+}
+
+export type InvoiceLayoutProfile = {
+  version: number
+  supplierId: string
+  supplierName: string
+  profileVersion: number
+  lineShape: 'table' | 'stacked'
+  zones: {
+    supplierHeader?: LayoutNormRect | null
+    lineItems?: LayoutNormRect | null
+    ignore?: Array<LayoutNormRect & { label?: string }>
+  }
+  columns: LayoutColumnField[]
+  footerStopPatterns?: string[]
+  multipage?: { sameColumnsOnContinuation: boolean }
+}
+
+export type LayoutTestResponse = {
+  lineCount: number
+  lines: Array<{
+    code?: string | null
+    description?: string
+    qty?: number | null
+    unitCost?: number | null
+    page?: number | null
+    confidence?: string
+  }>
+  warnings: string[]
+  layoutVersion?: number | null
+}
+
+export type LayoutSummary = {
+  supplierId: string
+  supplierName: string
+  profileVersion: number
+  lineShape: string
+  active: boolean
+  updatedAt?: string | null
+}
+
 export type SupplierOfferProductRef = { _id: string; name: string; sku: string }
 
 export type SupplierOfferSupplierRef = { _id: string; name: string; code: string; active?: boolean }
@@ -628,6 +737,7 @@ export type ProductPresetsState = {
 
 export interface CustomerDisplaySettings {
   enabled?: boolean
+  showDigitalClock?: boolean
   idle?: {
     headline?: string
     subtext?: string
