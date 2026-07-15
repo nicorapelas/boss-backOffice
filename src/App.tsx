@@ -16,6 +16,7 @@ import { StoreBackupPage } from './pages/StoreBackup'
 import { Products } from './pages/Products'
 import { ReceiveStockPage } from './pages/ReceiveStock'
 import { InvoiceLayoutTeachPage } from './pages/InvoiceLayoutTeach'
+import { SupplierInvoicesPage } from './pages/SupplierInvoices'
 import { SuppliersPage } from './pages/Suppliers'
 import { StoreSettingsPage } from './pages/StoreSettings'
 import { StoreVoucherPage } from './pages/StoreVoucher'
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/receive-stock" element={<ReceiveStockPage />} />
             <Route path="/invoice-layouts" element={<InvoiceLayoutTeachPage />} />
+            <Route path="/supplier-invoices" element={<SupplierInvoicesPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/pos-terminals" element={<PosTerminalsPage />} />

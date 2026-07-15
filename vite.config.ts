@@ -24,10 +24,14 @@ function copyLabelFontsPlugin(): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiBase = env.VITE_API_BASE_URL || 'http://localhost:4000/api'
+  const intakeUrl = env.VITE_INVOICE_INTAKE_URL || ''
+  const intakeKey = env.VITE_INVOICE_INTAKE_API_KEY || ''
 
   return {
     define: {
       'import.meta.env.VITE_API_BASE_URL': JSON.stringify(apiBase),
+      'import.meta.env.VITE_INVOICE_INTAKE_URL': JSON.stringify(intakeUrl),
+      'import.meta.env.VITE_INVOICE_INTAKE_API_KEY': JSON.stringify(intakeKey),
     },
     optimizeDeps: {
       include: ['@vladmandic/face-api'],

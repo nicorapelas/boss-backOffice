@@ -174,6 +174,12 @@ export type InvoiceIntakeDraft = {
       warnings: string[]
       ocrEngine?: string | null
       usedVisionFallback?: boolean
+      pageCount?: number
+      layoutSupplierName?: string | null
+      layoutProfileVersion?: number | null
+      unitCostVatMode?: 'ex_vat' | 'inc_vat'
+      vatRatePct?: number
+      unitCostsConvertedFromIncVat?: boolean
     }
   }
   match: InvoiceMatchResult
@@ -183,6 +189,57 @@ export type InvoiceIntakeDraft = {
   appliedAt?: string | null
 }
 
+export type DuplicateDraftHit = {
+  draftId: string
+  status: string
+  supplier: string
+  invoiceNumber?: string | null
+  createdAt: string
+  appliedAt?: string | null
+  deepLink: string
+}
+
+export type StoredInvoiceLine = {
+  code?: string | null
+  description: string
+  qty?: number | null
+  unitCost?: number | null
+  page?: number | null
+}
+
+export type StoredInvoice = {
+  invoiceId: string
+  draftId: string
+  supplier: string
+  invoiceNumber?: string | null
+  invoiceDate?: string | null
+  sourceFilename: string
+  pageCount: number
+  lineCount: number
+  lines: StoredInvoiceLine[]
+  paymentStatus: 'unpaid' | 'paid'
+  paidAt?: string | null
+  paymentNote?: string | null
+  stockStatus: 'applied'
+  appliedAt: string
+  createdAt: string
+  relativePath?: string
+}
+
+export type StoredInvoiceSummary = {
+  invoiceId: string
+  draftId: string
+  supplier: string
+  invoiceNumber?: string | null
+  invoiceDate?: string | null
+  lineCount: number
+  pageCount: number
+  paymentStatus: 'unpaid' | 'paid'
+  paidAt?: string | null
+  appliedAt: string
+  sourceFilename: string
+}
+
 export type InvoiceIntakeResponse = {
   draftId: string
   supplier: string
@@ -190,6 +247,8 @@ export type InvoiceIntakeResponse = {
   stats: InvoiceMatchResult['stats']
   deepLink: string
   warnings?: string[]
+  invoiceNumber?: string | null
+  duplicates?: DuplicateDraftHit[]
 }
 
 export type LayoutNormRect = { x0: number; y0: number; x1: number; y1: number }
@@ -225,6 +284,10 @@ export type InvoiceLayoutProfile = {
   supplierName: string
   profileVersion: number
   lineShape: 'table' | 'stacked'
+  unitCostVatMode?: 'ex_vat' | 'inc_vat'
+  vatRatePct?: number
+  /** Optional table row clustering tolerance (0–1 page height). Lower = denser rows. */
+  rowYTol?: number | null
   zones: {
     supplierHeader?: LayoutNormRect | null
     lineItems?: LayoutNormRect | null
@@ -249,6 +312,14 @@ export type LayoutTestResponse = {
   layoutVersion?: number | null
 }
 
+export type LayoutRepairResponse = {
+  profile: InvoiceLayoutProfile
+  changes: string[]
+  summary: string
+  usedLlm: boolean
+  test: LayoutTestResponse
+}
+
 export type LayoutSummary = {
   supplierId: string
   supplierName: string
@@ -256,6 +327,14 @@ export type LayoutSummary = {
   lineShape: string
   active: boolean
   updatedAt?: string | null
+}
+
+export type LayoutVersionSummary = {
+  profileVersion: number
+  lineShape: string
+  active: boolean
+  updatedAt?: string | null
+  createdAt?: string | null
 }
 
 export type SupplierOfferProductRef = { _id: string; name: string; sku: string }

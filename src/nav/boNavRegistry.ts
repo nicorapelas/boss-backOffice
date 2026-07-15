@@ -53,6 +53,14 @@ export const BO_NAV_ENTRIES: BoNavEntry[] = [
     permission: 'catalog.write',
   },
   {
+    id: 'supplier-invoices',
+    title: 'Supplier invoices',
+    path: '/supplier-invoices',
+    category: 'Catalog',
+    keywords: ['invoice', 'paid', 'unpaid', 'ap', 'supplier invoice', 'accounts payable'],
+    permission: 'catalog.write',
+  },
+  {
     id: 'label-settings',
     title: 'Label settings',
     path: '/label-settings',

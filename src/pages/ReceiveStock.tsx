@@ -8,6 +8,7 @@ import {
   fetchInvoiceDraft,
   isInvoiceIntakeConfigured,
   listSuppliers,
+  lookupInvoiceDraftDuplicates,
   markInvoiceDraftApplied,
   matchInvoiceLines,
   receiveInvoice,
@@ -20,14 +21,19 @@ import type {
   Product,
   ReceiveInvoiceResult,
   ReceiveLineInput,
+  ReceiveResultLine,
   StoreSettings,
   Supplier,
 } from '../api/types'
+import { BusyModal, waitForModalPaint } from '../components/BusyModal'
 import { ProductSkuLookupModal } from '../components/ProductSkuLookupModal'
 import {
-  getDefaultLabelProfile,
+  formatProfileSummary,
+  getLabelProfileById,
   profileToPrintSettings,
   readLabelPrinterConfig,
+  resolveInitialPrintProfileId,
+  writeLastUsedLabelProfileId,
 } from '../labels/labelSettings'
 import { nextSequentialSku, suggestCreateName, variantGroupKey } from '../utils/receiveStockSku'
 import { buildDecisionsFromMatch } from '../utils/receiveStockDecisions'
@@ -62,6 +68,17 @@ type RowDecision = {
   newSkuManuallyEdited?: boolean
 }
 
+type LabelBatchRow = {
+  key: string
+  name: string
+  sku: string
+  barcode: string | null
+  price: number
+  copies: number
+  profileId: string
+  included: boolean
+}
+
 type ReceivingConfig = { defaultMarkupPct: number; markupByCategory: Record<string, number> }
 
 const DEFAULT_RECEIVING: ReceivingConfig = { defaultMarkupPct: 100, markupByCategory: {} }
@@ -73,6 +90,47 @@ function newId(): string {
 
 function emptyLine(): EditLine {
   return { id: newId(), code: '', description: '', qty: '', unitCost: '' }
+}
+
+function defaultLabelCopiesForLine(line: ReceiveResultLine): number {
+  if (line.previousStock != null && line.newStock != null) {
+    const delta = Math.round(line.newStock - line.previousStock)
+    if (delta > 0) return Math.min(100, delta)
+  }
+  if (line.newStock != null && line.newStock > 0) return Math.min(100, Math.round(line.newStock))
+  return 1
+}
+
+function formatLabelPrintError(raw: string, profileName: string, transportHint?: string): string {
+  const msg = raw.trim()
+  const pathMatch = msg.match(/open ['"]([^'"]+)['"]/i)
+  const devicePath = pathMatch?.[1] ?? (transportHint?.startsWith('/dev/') ? transportHint : null)
+  if (/ENOENT|no such file or directory/i.test(msg) && devicePath) {
+    return (
+      `${profileName}: printer device not found (${devicePath}). ` +
+      `Plug the label printer in (or pick the other size), then open Label settings → Detect USB device.`
+    )
+  }
+  if (/EBUSY|EAGAIN|EPERM|busy/i.test(msg)) {
+    return `${profileName}: printer busy${devicePath ? ` (${devicePath})` : ''}. Wait a moment and try again.`
+  }
+  return `${profileName}: ${msg}`
+}
+
+function buildLabelBatchRows(lines: ReceiveResultLine[]): LabelBatchRow[] {
+  const defaultProfileId = resolveInitialPrintProfileId()
+  return lines
+    .filter((l) => l.ok && l.sku && l.action !== 'skip')
+    .map((l, i) => ({
+      key: `${l.productId ?? l.sku ?? 'line'}-${i}`,
+      name: l.name ?? l.sku ?? 'Item',
+      sku: l.sku!,
+      barcode: (l.barcode ?? '').trim() || null,
+      price: typeof l.newPrice === 'number' ? l.newPrice : 0,
+      copies: defaultLabelCopiesForLine(l),
+      profileId: defaultProfileId,
+      included: true,
+    }))
 }
 
 const CONFIDENCE_LABEL: Record<InvoiceMatchConfidence, string> = {
@@ -129,10 +187,10 @@ function countVariantSiblings(lines: InvoiceMatchResult['lines'], idx: number): 
 }
 
 const CONFIDENCE_COLOR: Record<InvoiceMatchConfidence, string> = {
-  exact: '#166534',
-  likely: '#3f6212',
-  uncertain: '#854d0e',
-  new: '#7f1d1d',
+  exact: '#22c55e',
+  likely: '#84cc16',
+  uncertain: '#eab308',
+  new: '#f87171',
 }
 
 function round2(n: number): number {
@@ -192,12 +250,31 @@ export function ReceiveStockPage() {
 
   const [applying, setApplying] = useState(false)
   const [result, setResult] = useState<ReceiveInvoiceResult | null>(null)
+  const [applySuccess, setApplySuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [lookupRowIdx, setLookupRowIdx] = useState<number | null>(null)
   const [catalogSkus, setCatalogSkus] = useState<string[]>([])
   const [draftId, setDraftId] = useState<string | null>(null)
+  const [draftParseMeta, setDraftParseMeta] = useState<{
+    layoutSupplierName?: string | null
+    layoutProfileVersion?: number | null
+    unitCostVatMode?: 'ex_vat' | 'inc_vat'
+    vatRatePct?: number
+    unitCostsConvertedFromIncVat?: boolean
+  } | null>(null)
+  const [draftInvoiceNumber, setDraftInvoiceNumber] = useState<string | null>(null)
+  const [draftDuplicates, setDraftDuplicates] = useState<
+    Array<{ draftId: string; status: string; deepLink: string; appliedAt?: string | null }>
+  >([])
+  const [allowDuplicateApply, setAllowDuplicateApply] = useState(false)
   const [intakeBusy, setIntakeBusy] = useState(false)
+  const [intakeBusyKind, setIntakeBusyKind] = useState<'upload' | 'draft' | null>(null)
+  const [labelBatchOpen, setLabelBatchOpen] = useState(false)
+  const [labelBatchRows, setLabelBatchRows] = useState<LabelBatchRow[]>([])
+  const [labelBatchBusy, setLabelBatchBusy] = useState(false)
+  const [labelBatchError, setLabelBatchError] = useState<string | null>(null)
+  const resultSectionRef = useRef<HTMLElement | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const loadedDraftRef = useRef<string | null>(null)
 
@@ -241,11 +318,24 @@ export function ReceiveStockPage() {
       setError(null)
       setNotice(null)
       setResult(null)
+      setApplySuccess(false)
+      setIntakeBusyKind('draft')
       setIntakeBusy(true)
+      await waitForModalPaint()
       try {
         const draft = await fetchInvoiceDraft(id)
         setDraftId(draft.draftId)
         setSupplier(draft.supplier)
+        setDraftInvoiceNumber(draft.extracted.invoiceNumber ?? null)
+        setDraftParseMeta({
+          layoutSupplierName: draft.extracted.parseMeta.layoutSupplierName,
+          layoutProfileVersion: draft.extracted.parseMeta.layoutProfileVersion,
+          unitCostVatMode: draft.extracted.parseMeta.unitCostVatMode,
+          vatRatePct: draft.extracted.parseMeta.vatRatePct,
+          unitCostsConvertedFromIncVat: draft.extracted.parseMeta.unitCostsConvertedFromIncVat,
+        })
+        setDraftDuplicates([])
+        setAllowDuplicateApply(false)
         setLines(
           draft.extracted.lines.map((l) => ({
             id: newId(),
@@ -260,13 +350,32 @@ export function ReceiveStockPage() {
         hydrateCatalogSkusForMatch(draft.match, initial)
         const warns = draft.extracted.parseMeta.warnings
         const warnText = warns.length ? ` Warnings: ${warns.join('; ')}` : ''
+        const inv = draft.extracted.invoiceNumber ? ` Invoice #${draft.extracted.invoiceNumber}.` : ''
         setNotice(
-          `Loaded AI draft (${draft.extracted.lines.length} lines, supplier from ${draft.supplierResolvedFrom}).${warnText}`,
+          `Loaded AI draft (${draft.extracted.lines.length} lines, supplier from ${draft.supplierResolvedFrom}).${inv}${warnText}`,
         )
+        if (draft.extracted.invoiceNumber) {
+          try {
+            const lookup = await lookupInvoiceDraftDuplicates(draft.supplier, draft.extracted.invoiceNumber)
+            setDraftDuplicates(
+              lookup.matches
+                .filter((m) => m.draftId !== draft.draftId)
+                .map((d) => ({
+                  draftId: d.draftId,
+                  status: d.status,
+                  deepLink: d.deepLink,
+                  appliedAt: d.appliedAt,
+                })),
+            )
+          } catch {
+            /* non-fatal */
+          }
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load draft')
       } finally {
         setIntakeBusy(false)
+        setIntakeBusyKind(null)
       }
     },
     [hydrateCatalogSkusForMatch],
@@ -305,9 +414,15 @@ export function ReceiveStockPage() {
     setPasteText('')
     setMatchResult(null)
     setResult(null)
+    setApplySuccess(false)
     setError(null)
     setNotice(`Loaded ${parsed.length} line${parsed.length === 1 ? '' : 's'}.`)
   }
+
+  const labelPrinterProfiles = useMemo(
+    () => (labelBatchOpen ? readLabelPrinterConfig().profiles : []),
+    [labelBatchOpen],
+  )
 
   const cleanLines = useMemo(
     () => lines.filter((l) => l.description.trim().length > 0),
@@ -318,6 +433,7 @@ export function ReceiveStockPage() {
     setError(null)
     setNotice(null)
     setResult(null)
+    setApplySuccess(false)
     if (!supplier.trim()) {
       setError('Choose or enter a supplier.')
       return
@@ -487,6 +603,13 @@ export function ReceiveStockPage() {
 
   async function applyReceive() {
     if (!matchResult) return
+    const appliedDupes = draftDuplicates.filter((d) => d.status === 'applied')
+    if (appliedDupes.length && !allowDuplicateApply) {
+      setError(
+        `Invoice ${draftInvoiceNumber ?? ''} was already applied. Tick “Apply anyway” below to continue, or open the prior draft.`,
+      )
+      return
+    }
     setError(null)
     setNotice(null)
     const payload: ReceiveLineInput[] = []
@@ -539,52 +662,112 @@ export function ReceiveStockPage() {
     try {
       const res = await receiveInvoice({ supplier: supplier.trim(), stockMode, lines: payload })
       setResult(res)
-      setNotice(`Applied ${res.applied}, skipped ${res.skipped}${res.failed ? `, failed ${res.failed}` : ''}.`)
+      setApplySuccess(true)
+      setNotice(
+        `Applied ${res.applied}, skipped ${res.skipped}${res.failed ? `, failed ${res.failed}` : ''}. Invoice saved — mark paid on Supplier invoices when settled.`,
+      )
       if (draftId) void markInvoiceDraftApplied(draftId)
+      window.setTimeout(() => {
+        resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 50)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Apply failed')
+      setApplySuccess(false)
     } finally {
       setApplying(false)
     }
   }
 
-  async function printLabelsForResult() {
-    if (!result || !window.electronBo) {
-      setError('Label printing is available in the desktop app only.')
-      return
-    }
-    const profile = getDefaultLabelProfile(readLabelPrinterConfig())
-    const s = profileToPrintSettings(profile)
-    const toPrint = result.lines.filter((l) => l.ok && l.sku)
-    if (toPrint.length === 0) {
-      setError('No applied lines to print.')
+  function openLabelBatchModal() {
+    if (!result) return
+    const rows = buildLabelBatchRows(result.lines)
+    if (!rows.length) {
+      setError('No applied items with SKUs to print.')
       return
     }
     setError(null)
-    let ok = 0
-    for (const l of toPrint) {
-      try {
-        const r = await window.electronBo.printProductLabel(
-          s.transport,
-          {
-            name: l.name ?? '',
-            sku: l.sku ?? '',
-            barcodeValue: (l.barcode ?? '').trim() || (l.sku ?? ''),
-            price: l.newPrice ?? 0,
-          },
-          {
-            copies: 1,
-            layout: s.layout,
-            template: s.template,
-            presetId: s.templateRef.kind === 'preset' ? s.templateRef.presetId : undefined,
-          },
-        )
-        if (r.ok) ok += 1
-      } catch {
-        // continue printing the rest
-      }
+    setLabelBatchError(null)
+    setLabelBatchRows(rows)
+    setLabelBatchOpen(true)
+  }
+
+  function updateLabelBatchRow(key: string, patch: Partial<LabelBatchRow>) {
+    setLabelBatchRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  }
+
+  async function printLabelBatch() {
+    if (!window.electronBo?.printProductLabel) {
+      setLabelBatchError('Label printing is available in the CogniPOS desktop app only (not the browser).')
+      return
     }
-    setNotice(`Printed ${ok}/${toPrint.length} labels (${profile.name}).`)
+    const selected = labelBatchRows.filter((r) => r.included && r.copies > 0)
+    if (!selected.length) {
+      setLabelBatchError('Select at least one item with quantity ≥ 1.')
+      return
+    }
+    const config = readLabelPrinterConfig()
+    setLabelBatchBusy(true)
+    setLabelBatchError(null)
+    let ok = 0
+    let fail = 0
+    let lastProfileName = ''
+    try {
+      for (const row of selected) {
+        const profile =
+          getLabelProfileById(row.profileId, config) ??
+          config.profiles.find((p) => p.isDefault) ??
+          config.profiles[0]
+        if (!profile) {
+          fail += 1
+          continue
+        }
+        lastProfileName = profile.name
+        const s = profileToPrintSettings(profile)
+        const transportPath = s.transport.kind === 'usb' ? s.transport.path : `${s.transport.host}:${s.transport.port}`
+        try {
+          const r = await window.electronBo.printProductLabel(
+            s.transport,
+            {
+              name: row.name,
+              sku: row.sku,
+              barcodeValue: (row.barcode ?? '').trim() || row.sku,
+              price: row.price,
+            },
+            {
+              copies: Math.max(1, Math.min(100, Math.floor(row.copies))),
+              layout: s.layout,
+              template: s.template,
+              presetId: s.templateRef.kind === 'preset' ? s.templateRef.presetId : undefined,
+            },
+          )
+          if (r.ok) {
+            ok += 1
+            writeLastUsedLabelProfileId(profile.id)
+          } else {
+            fail += 1
+            const friendly = formatLabelPrintError(r.error ?? 'Label print failed', profile.name, transportPath)
+            setLabelBatchError(friendly)
+            if (/not found|ENOENT|no such file/i.test(friendly)) break
+          }
+        } catch (e) {
+          fail += 1
+          const raw = e instanceof Error ? e.message : 'Print failed'
+          const friendly = formatLabelPrintError(raw, profile.name, transportPath)
+          setLabelBatchError(friendly)
+          if (/not found|ENOENT|no such file/i.test(friendly)) break
+        }
+      }
+      if (ok > 0) {
+        setNotice(
+          `Printed labels for ${ok} item${ok === 1 ? '' : 's'}${fail ? ` (${fail} failed)` : ''}${
+            lastProfileName ? ` — last printer: ${lastProfileName}` : ''
+          }.`,
+        )
+      }
+      if (fail === 0) setLabelBatchOpen(false)
+    } finally {
+      setLabelBatchBusy(false)
+    }
   }
 
   function resetAll() {
@@ -593,10 +776,17 @@ export function ReceiveStockPage() {
     setMatchResult(null)
     setDecisions([])
     setResult(null)
+    setApplySuccess(false)
     setError(null)
     setNotice(null)
     setLookupRowIdx(null)
     setDraftId(null)
+    setDraftParseMeta(null)
+    setDraftInvoiceNumber(null)
+    setDraftDuplicates([])
+    setAllowDuplicateApply(false)
+    setLabelBatchOpen(false)
+    setLabelBatchRows([])
     loadedDraftRef.current = null
     if (searchParams.get('draft')) {
       const next = new URLSearchParams(searchParams)
@@ -611,25 +801,68 @@ export function ReceiveStockPage() {
     setError(null)
     setNotice(null)
     setResult(null)
+    setApplySuccess(false)
+    setIntakeBusyKind('upload')
     setIntakeBusy(true)
+    await waitForModalPaint()
     try {
       const res = await uploadInvoiceFiles(files)
       loadedDraftRef.current = res.draftId
       setSearchParams({ draft: res.draftId }, { replace: true })
+      setDraftDuplicates(
+        (res.duplicates ?? []).map((d) => ({
+          draftId: d.draftId,
+          status: d.status,
+          deepLink: d.deepLink,
+          appliedAt: d.appliedAt,
+        })),
+      )
+      setAllowDuplicateApply(false)
+      // Keep modal open through draft load (loadDraft owns busy teardown).
+      setIntakeBusyKind('draft')
       await loadDraft(res.draftId)
       if (res.warnings?.length) {
         setNotice((prev) => `${prev ?? ''} ${res.warnings!.join(' ')}`.trim())
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Invoice photo intake failed')
-    } finally {
       setIntakeBusy(false)
+      setIntakeBusyKind(null)
+    } finally {
       if (photoInputRef.current) photoInputRef.current.value = ''
     }
   }
 
+  useEffect(() => {
+    if (!intakeBusy) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [intakeBusy])
+
+  const intakeBusyCopy =
+    intakeBusyKind === 'draft'
+      ? {
+          title: 'Loading invoice draft…',
+          message: 'Fetching extracted lines and catalog matches. Stay on this page until it finishes.',
+        }
+      : {
+          title: 'Processing invoice…',
+          message:
+            'Running OCR and structuring line items. This can take a minute for PDFs — please stay on this page.',
+        }
+
   return (
     <BoShell>
+      <BusyModal open={intakeBusy} title={intakeBusyCopy.title} message={intakeBusyCopy.message} />
       <h1>Receive stock</h1>
       <p className="muted">
         Enter a supplier invoice, match each line to your catalog, then apply to update stock, cost and price.
@@ -638,10 +871,10 @@ export function ReceiveStockPage() {
 
       {!canWrite && <p className="error">Permission required: catalog write.</p>}
 
-      {canWrite && (
+          {canWrite && (
         <>
           {error && <p className="error">{error}</p>}
-          {notice && <p className="success">{notice}</p>}
+          {notice && !applySuccess && <p className="success">{notice}</p>}
 
           <section className="panel">
             <div className="inline-form" style={{ flexWrap: 'wrap', gap: '1rem' }}>
@@ -672,11 +905,11 @@ export function ReceiveStockPage() {
             </div>
           </section>
 
-          <section className="panel">
+          <section className="panel receive-stock-lines">
             <h2>1 · Invoice lines</h2>
             {intakeEnabled && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--panel-alt, #f4f4f5)', borderRadius: '6px' }}>
-                <strong>Invoice photo / PDF</strong>
+              <div className="receive-stock-upload">
+                <strong className="receive-stock-upload-title">Invoice photo / PDF</strong>
                 <p className="muted" style={{ margin: '0.35rem 0' }}>
                   Upload a PDF or one/more page photos (select several images for multipage). OCR + local AI on Steve
                   merges pages into one draft. Or drop files in <code>~/cognipos-inbox/inbox/</code>.
@@ -692,31 +925,94 @@ export function ReceiveStockPage() {
                     if (list?.length) void handlePhotoUpload(list)
                   }}
                 />
-                {intakeBusy && <p className="muted">Processing invoice…</p>}
                 {draftId && <p className="muted">Draft: {draftId}</p>}
+                {draftId && (draftInvoiceNumber || draftParseMeta) ? (
+                  <div className="receive-stock-layout-meta" style={{ marginTop: '0.5rem' }}>
+                    {draftInvoiceNumber ? (
+                      <p className="muted" style={{ margin: '0.25rem 0' }}>
+                        Invoice / doc #: <strong>{draftInvoiceNumber}</strong>
+                      </p>
+                    ) : null}
+                    {draftParseMeta?.unitCostsConvertedFromIncVat || draftParseMeta?.unitCostVatMode === 'inc_vat' ? (
+                      <p className="muted" style={{ margin: '0.25rem 0' }}>
+                        Unit costs treated as VAT-inclusive (
+                        {draftParseMeta.vatRatePct ?? 15}%)
+                        {draftParseMeta.unitCostsConvertedFromIncVat ? ' — converted to ex VAT for stock.' : '.'}
+                      </p>
+                    ) : null}
+                    {draftParseMeta?.layoutSupplierName ? (
+                      <p className="muted" style={{ margin: '0.25rem 0' }}>
+                        Parsed using layout{' '}
+                        <strong>
+                          {draftParseMeta.layoutSupplierName} v{draftParseMeta.layoutProfileVersion ?? '?'}
+                        </strong>
+                      </p>
+                    ) : (
+                      <p className="muted" style={{ margin: '0.25rem 0' }}>
+                        No taught layout — generic OCR + AI.
+                      </p>
+                    )}
+                    {supplier ? (
+                      <Link
+                        to={`/invoice-layouts?fromDraft=${encodeURIComponent(draftId)}&supplier=${encodeURIComponent(supplier)}`}
+                      >
+                        {draftParseMeta?.layoutProfileVersion
+                          ? 'Re-teach layout from this invoice'
+                          : 'Teach layout from this invoice'}
+                      </Link>
+                    ) : null}
+                  </div>
+                ) : null}
+                {draftDuplicates.length > 0 ? (
+                  <div className="receive-stock-dupe-warn">
+                    <strong>Possible duplicate invoice</strong>
+                    <ul className="small-print" style={{ margin: '0.35rem 0 0.5rem' }}>
+                      {draftDuplicates.map((d) => (
+                        <li key={d.draftId}>
+                          {d.status === 'applied' ? 'Already applied' : 'Pending'} draft{' '}
+                          <Link to={d.deepLink}>{d.draftId.slice(0, 8)}…</Link>
+                          {d.appliedAt ? ` (${new Date(d.appliedAt).toLocaleDateString()})` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                    {draftDuplicates.some((d) => d.status === 'applied') ? (
+                      <label className="small-print">
+                        <input
+                          type="checkbox"
+                          checked={allowDuplicateApply}
+                          onChange={(e) => setAllowDuplicateApply(e.target.checked)}
+                        />{' '}
+                        Apply anyway (I understand this may double-receive stock)
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
                 <p className="muted" style={{ marginTop: '0.5rem' }}>
                   New supplier format?{' '}
                   <Link to="/invoice-layouts">Teach invoice layout</Link>
                 </p>
               </div>
             )}
-            <p className="muted">
-              Paste from a spreadsheet (tab or <code>|</code> separated: code, description, qty, unit cost) or edit
-              the rows directly.
-            </p>
-            <textarea
-              value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
-              rows={4}
-              placeholder={'78000016\tAXIL FRONT SKEWER 5/16\t10\t14.00'}
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.85rem' }}
-            />
-            <div style={{ margin: '0.5rem 0' }}>
-              <button type="button" className="btn small" onClick={applyPaste} disabled={!pasteText.trim()}>
-                Load pasted lines
-              </button>
+            <div className="receive-stock-paste">
+              <p className="muted">
+                Paste from a spreadsheet (tab or <code>|</code> separated: code, description, qty, unit cost) or edit
+                the rows directly.
+              </p>
+              <textarea
+                className="receive-stock-paste-input"
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                rows={4}
+                placeholder={'78000016\tAXIL FRONT SKEWER 5/16\t10\t14.00'}
+              />
+              <div className="receive-stock-paste-actions">
+                <button type="button" className="btn small" onClick={applyPaste} disabled={!pasteText.trim()}>
+                  Load pasted lines
+                </button>
+              </div>
             </div>
 
+            <div className="receive-stock-rows">
             <table className="table">
               <thead>
                 <tr>
@@ -763,7 +1059,7 @@ export function ReceiveStockPage() {
                 ))}
               </tbody>
             </table>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <div className="receive-stock-row-actions">
               <button type="button" className="btn small" onClick={() => setLines((p) => [...p, emptyLine()])}>
                 + Add row
               </button>
@@ -776,16 +1072,17 @@ export function ReceiveStockPage() {
                 {matching ? 'Matching…' : 'Find matches'}
               </button>
             </div>
+            </div>
           </section>
 
           {matchResult && (
-            <section className="panel">
+            <section className="panel receive-stock-matches">
               <h2>2 · Review matches</h2>
               <p className="muted">
                 {matchResult.stats.exact} exact · {matchResult.stats.likely} likely · {matchResult.stats.uncertain}{' '}
                 to check · {matchResult.stats.neu} new. Wrong guess? Use <strong>SKU lookup</strong> on any line.
               </p>
-              <table className="table">
+              <table className="table receive-stock-matches-table">
                 <thead>
                   <tr>
                     <th>Invoice line</th>
@@ -803,22 +1100,16 @@ export function ReceiveStockPage() {
                     return (
                       <tr key={idx}>
                         <td>
-                          <div>{ml.input.description}</div>
-                          <div className="muted" style={{ fontSize: '0.8rem' }}>
+                          <div className="receive-stock-match-desc">{ml.input.description}</div>
+                          <div className="receive-stock-match-meta">
                             {ml.input.code ? `${ml.input.code} · ` : ''}
                             qty {ml.input.qty ?? '—'} · cost {ml.input.unitCost ?? '—'}
                           </div>
                         </td>
                         <td>
                           <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '0.1rem 0.5rem',
-                              borderRadius: 6,
-                              color: '#fff',
-                              fontSize: '0.78rem',
-                              background: CONFIDENCE_COLOR[ml.confidence],
-                            }}
+                            className="receive-stock-confidence"
+                            style={{ background: CONFIDENCE_COLOR[ml.confidence] }}
                           >
                             {CONFIDENCE_LABEL[ml.confidence]}
                           </span>
@@ -967,8 +1258,23 @@ export function ReceiveStockPage() {
           />
 
           {result && (
-            <section className="panel">
+            <section className="panel receive-stock-result" ref={resultSectionRef}>
               <h2>3 · Result</h2>
+              {applySuccess ? (
+                <div className="layout-teach-banner layout-teach-banner--success" role="status">
+                  <p>
+                    <strong>Stock updated</strong>
+                    {` — applied ${result.applied}, skipped ${result.skipped}`}
+                    {result.failed ? `, failed ${result.failed}` : ''}.
+                  </p>
+                  <p className="small-print">
+                    Invoice saved — mark paid on{' '}
+                    <Link to="/supplier-invoices">Supplier invoices</Link> when settled. Print labels below if needed.
+                  </p>
+                </div>
+              ) : notice ? (
+                <p className="success">{notice}</p>
+              ) : null}
               <table className="table">
                 <thead>
                   <tr>
@@ -1010,8 +1316,8 @@ export function ReceiveStockPage() {
                   ))}
                 </tbody>
               </table>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
-                <button type="button" className="btn" onClick={() => void printLabelsForResult()}>
+              <div className="receive-stock-row-actions">
+                <button type="button" className="btn primary" onClick={openLabelBatchModal}>
                   Print labels for applied items
                 </button>
                 <button type="button" className="btn ghost" onClick={resetAll}>
@@ -1020,6 +1326,118 @@ export function ReceiveStockPage() {
               </div>
             </section>
           )}
+
+          {labelBatchOpen ? (
+            <div
+              className="modal-backdrop"
+              role="presentation"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget && !labelBatchBusy) setLabelBatchOpen(false)
+              }}
+            >
+              <div
+                className="modal-dialog panel receive-stock-label-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="receive-label-title"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <h2 id="receive-label-title">Print labels</h2>
+                <p className="muted modal-subtitle">
+                  Adjust quantities and pick a label size / printer per item, then print.
+                </p>
+                {labelBatchError ? (
+                  <div className="receive-stock-label-error" role="alert">
+                    <p className="error">{labelBatchError}</p>
+                    <p className="small-print">
+                      Check <Link to="/label-settings">Label settings</Link> — Detect USB for each size, or switch
+                      this row to the other printer.
+                    </p>
+                  </div>
+                ) : null}
+                <div className="receive-stock-label-table-wrap">
+                  <table className="table receive-stock-label-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '2.5rem' }} />
+                        <th>Item</th>
+                        <th style={{ width: '5.5rem' }}>Qty</th>
+                        <th style={{ minWidth: '11rem' }}>Label size</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {labelBatchRows.map((row) => (
+                        <tr key={row.key}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={row.included}
+                              disabled={labelBatchBusy}
+                              onChange={(e) => updateLabelBatchRow(row.key, { included: e.target.checked })}
+                              aria-label={`Include ${row.name}`}
+                            />
+                          </td>
+                          <td>
+                            <div>{row.name}</div>
+                            <div className="muted" style={{ fontSize: '0.8rem' }}>
+                              {row.sku}
+                            </div>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="receive-stock-label-qty"
+                              min={1}
+                              max={100}
+                              value={row.copies}
+                              disabled={labelBatchBusy || !row.included}
+                              onChange={(e) =>
+                                updateLabelBatchRow(row.key, {
+                                  copies: Math.max(1, Math.min(100, Math.floor(Number(e.target.value) || 1))),
+                                })
+                              }
+                            />
+                          </td>
+                          <td>
+                            <select
+                              value={row.profileId}
+                              disabled={labelBatchBusy || !row.included}
+                              onChange={(e) => updateLabelBatchRow(row.key, { profileId: e.target.value })}
+                            >
+                              {labelPrinterProfiles.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {formatProfileSummary(p)}
+                                  {p.isDefault ? ' · default' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    className="btn primary"
+                    disabled={labelBatchBusy || !labelBatchRows.some((r) => r.included)}
+                    onClick={() => void printLabelBatch()}
+                  >
+                    {labelBatchBusy ? 'Printing…' : 'Print selected'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    disabled={labelBatchBusy}
+                    onClick={() => setLabelBatchOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </BoShell>
