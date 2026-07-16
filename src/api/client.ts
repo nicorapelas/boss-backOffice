@@ -777,6 +777,37 @@ export async function updateStoredInvoicePayment(
   return res.json() as Promise<import('./types').StoredInvoice>
 }
 
+export async function downloadStoredInvoice(invoiceId: string) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const res = await fetch(`${base}/invoices/${encodeURIComponent(invoiceId)}/download`, {
+    headers: intakeHeaders(),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail || `Download failed (${res.status})`)
+  }
+  const blob = await res.blob()
+  const disposition = res.headers.get('Content-Disposition') || ''
+  const match = /filename="?([^";]+)"?/i.exec(disposition)
+  const filename = match?.[1] || `invoice-${invoiceId.slice(0, 8)}.zip`
+  return { blob, filename }
+}
+
+export async function deleteStoredInvoice(invoiceId: string) {
+  const base = intakeBase()
+  if (!base) throw new Error('Invoice intake service is not configured.')
+  const res = await fetch(`${base}/invoices/${encodeURIComponent(invoiceId)}`, {
+    method: 'DELETE',
+    headers: intakeHeaders(),
+  })
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string }
+    throw new Error(body.detail || `Delete failed (${res.status})`)
+  }
+  return res.json() as Promise<{ ok: boolean; invoiceId: string }>
+}
+
 export async function fetchStoredInvoicePageBlob(invoiceId: string, page = 1) {
   const base = intakeBase()
   if (!base) throw new Error('Invoice intake service is not configured.')

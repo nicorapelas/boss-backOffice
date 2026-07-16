@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
+  deleteStoredInvoice,
+  downloadStoredInvoice,
   fetchStoredInvoicePageBlob,
   getStoredInvoice,
   isInvoiceIntakeConfigured,
@@ -10,6 +12,7 @@ import {
 import type { StoredInvoice, StoredInvoiceSummary } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { hasPermission } from '../auth/permissions'
+import { ConfirmModal } from '../components/ConfirmModal'
 import { BoShell } from '../layouts/BoShell'
 
 type PayFilter = 'all' | 'unpaid' | 'paid'
@@ -36,6 +39,7 @@ export function SupplierInvoicesPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
 
   const loadList = useCallback(async () => {
     setError(null)
@@ -101,6 +105,13 @@ export function SupplierInvoicesPage() {
     setNotice(null)
   }
 
+  const clearSelection = () => {
+    setSelectedId(null)
+    setDetail(null)
+    setSearchParams({}, { replace: true })
+    setNotice(null)
+  }
+
   const changePage = async (next: number) => {
     if (!selectedId || !detail) return
     const page = Math.max(1, Math.min(next, detail.pageCount))
@@ -135,6 +146,49 @@ export function SupplierInvoicesPage() {
     }
   }
 
+  const downloadInvoice = async () => {
+    if (!selectedId) return
+    setBusy(true)
+    setError(null)
+    try {
+      const { blob, filename } = await downloadStoredInvoice(selectedId)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      setNotice('Download started.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Download failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteInvoice = async () => {
+    if (!selectedId || !detail) return
+    setBusy(true)
+    setError(null)
+    try {
+      await deleteStoredInvoice(selectedId)
+      setDeleteConfirmOpen(false)
+      clearSelection()
+      setNotice('Invoice deleted.')
+      void loadList()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteLabel = detail
+    ? detail.invoiceNumber
+      ? `${detail.supplier} #${detail.invoiceNumber}`
+      : detail.supplier
+    : ''
+
   if (!canWrite) {
     return (
       <BoShell>
@@ -156,20 +210,25 @@ export function SupplierInvoicesPage() {
     )
   }
 
+  const showingDetail = Boolean(selectedId)
+
   return (
     <BoShell>
       <h1>Supplier invoices</h1>
       <p className="small-print">
         Durable copies of invoices after stock Apply. Mark paid when the supplier is paid — separate from receiving
-        stock. Drafts still expire after 7 days; these records keep the pages.
+        stock. Download saves pages as a ZIP. Delete removes the stored record only (stock Apply is not reversed).
+        Drafts still expire after 7 days; these records keep the pages.
       </p>
 
       {error ? <p className="error-text">{error}</p> : null}
       {notice ? <p className="small-print">{notice}</p> : null}
 
-      <div className="supplier-invoices-layout">
-        <section className="panel">
-          <div className="layout-teach-actions" style={{ marginTop: 0 }}>
+      <div
+        className={`supplier-invoices-layout${showingDetail ? ' supplier-invoices-layout--detail' : ' supplier-invoices-layout--list'}`}
+      >
+        <section className="panel supplier-invoices-list">
+          <div className="supplier-invoices-toolbar">
             <button
               type="button"
               className={`btn small${payFilter === 'all' ? '' : ' ghost'}`}
@@ -199,112 +258,141 @@ export function SupplierInvoicesPage() {
           {rows.length === 0 ? (
             <p className="muted">No stored invoices yet. Apply stock from a draft on Receive stock to save one.</p>
           ) : (
-            <table className="data-table supplier-invoices-table">
-              <thead>
-                <tr>
-                  <th>Supplier</th>
-                  <th>Invoice #</th>
-                  <th>Applied</th>
-                  <th>Lines</th>
-                  <th>Paid</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr
-                    key={r.invoiceId}
-                    className={selectedId === r.invoiceId ? 'supplier-invoices-row--active' : undefined}
-                    onClick={() => selectInvoice(r.invoiceId)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td>{r.supplier}</td>
-                    <td>{r.invoiceNumber ?? '—'}</td>
-                    <td>{formatDate(r.appliedAt)}</td>
-                    <td>{r.lineCount}</td>
-                    <td>
-                      <span className={`supplier-invoices-pill supplier-invoices-pill--${r.paymentStatus}`}>
-                        {r.paymentStatus}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-
-        <section className="panel">
-          {!detail ? (
-            <p className="muted">Select an invoice to view pages and update payment.</p>
-          ) : (
-            <>
-              <h2 className="bo-section-title" style={{ marginTop: 0 }}>
-                {detail.supplier}
-                {detail.invoiceNumber ? ` · #${detail.invoiceNumber}` : ''}
-              </h2>
-              <p className="small-print">
-                Applied {formatDate(detail.appliedAt)} · {detail.lineCount} lines · {detail.pageCount} page
-                {detail.pageCount === 1 ? '' : 's'} · from{' '}
-                <Link to={`/receive-stock?draft=${encodeURIComponent(detail.draftId)}`}>draft</Link>
-              </p>
-
-              <div className="layout-teach-actions">
-                {detail.paymentStatus === 'unpaid' ? (
-                  <button type="button" className="btn" disabled={busy} onClick={() => void setPayment('paid')}>
-                    Mark paid
-                  </button>
-                ) : (
-                  <button type="button" className="btn ghost" disabled={busy} onClick={() => void setPayment('unpaid')}>
-                    Mark unpaid
-                  </button>
-                )}
-              </div>
-              <label>
-                Payment note
-                <input
-                  type="text"
-                  value={paymentNote}
-                  disabled={busy}
-                  placeholder="e.g. EFT Absa 13 Jul"
-                  onChange={(e) => setPaymentNote(e.target.value)}
-                  onBlur={() => {
-                    if (detail && (paymentNote.trim() || '') !== (detail.paymentNote ?? '')) {
-                      void setPayment(detail.paymentStatus)
-                    }
-                  }}
-                />
-              </label>
-              {detail.paidAt ? <p className="small-print">Paid on {formatDate(detail.paidAt)}</p> : null}
-
-              <h3 className="bo-section-title" style={{ fontSize: '1rem' }}>
-                Lines
-              </h3>
-              <table className="data-table supplier-invoices-table">
+            <div className="supplier-invoices-list-wrap">
+              <table className="data-table supplier-invoices-table supplier-invoices-list-table">
                 <thead>
                   <tr>
-                    <th>Code</th>
-                    <th>Description</th>
-                    <th>Qty</th>
-                    <th>Unit</th>
+                    <th>Supplier</th>
+                    <th>Invoice #</th>
+                    <th>Applied</th>
+                    <th>Lines</th>
+                    <th>Paid</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {detail.lines.map((ln, i) => (
-                    <tr key={i}>
-                      <td>{ln.code ?? '—'}</td>
-                      <td>{ln.description}</td>
-                      <td>{ln.qty ?? '—'}</td>
-                      <td>{ln.unitCost ?? '—'}</td>
+                  {rows.map((r) => (
+                    <tr
+                      key={r.invoiceId}
+                      className={selectedId === r.invoiceId ? 'supplier-invoices-row--active' : undefined}
+                      onClick={() => selectInvoice(r.invoiceId)}
+                    >
+                      <td data-label="Supplier">
+                        <span className="supplier-invoices-supplier">{r.supplier}</span>
+                      </td>
+                      <td data-label="Invoice #">{r.invoiceNumber ?? '—'}</td>
+                      <td data-label="Applied">{formatDate(r.appliedAt)}</td>
+                      <td data-label="Lines">{r.lineCount}</td>
+                      <td data-label="Paid">
+                        <span className={`supplier-invoices-pill supplier-invoices-pill--${r.paymentStatus}`}>
+                          {r.paymentStatus}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </section>
 
-              <h3 className="bo-section-title" style={{ fontSize: '1rem' }}>
-                Source page
-              </h3>
+        <section className="panel supplier-invoices-detail">
+          {!detail ? (
+            <p className="muted supplier-invoices-detail-empty">
+              Select an invoice to view pages and update payment.
+            </p>
+          ) : (
+            <>
+              <div className="supplier-invoices-detail-header">
+                <button type="button" className="btn small ghost supplier-invoices-back" onClick={clearSelection}>
+                  ← Back to list
+                </button>
+                <h2 className="bo-section-title supplier-invoices-detail-title">
+                  {detail.supplier}
+                  {detail.invoiceNumber ? ` · #${detail.invoiceNumber}` : ''}
+                </h2>
+                <p className="small-print">
+                  Applied {formatDate(detail.appliedAt)} · {detail.lineCount} lines · {detail.pageCount} page
+                  {detail.pageCount === 1 ? '' : 's'} · from{' '}
+                  <Link to={`/receive-stock?draft=${encodeURIComponent(detail.draftId)}`}>draft</Link>
+                </p>
+              </div>
+
+              <div className="supplier-invoices-payment">
+                <div className="supplier-invoices-toolbar">
+                  {detail.paymentStatus === 'unpaid' ? (
+                    <button type="button" className="btn" disabled={busy} onClick={() => void setPayment('paid')}>
+                      Mark paid
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      disabled={busy}
+                      onClick={() => void setPayment('unpaid')}
+                    >
+                      Mark unpaid
+                    </button>
+                  )}
+                  <button type="button" className="btn small" disabled={busy} onClick={() => void downloadInvoice()}>
+                    Download invoice
+                  </button>
+                  <button
+                    type="button"
+                    className="btn small ghost supplier-invoices-delete"
+                    disabled={busy}
+                    onClick={() => setDeleteConfirmOpen(true)}
+                  >
+                    Delete invoice
+                  </button>
+                  <span className={`supplier-invoices-pill supplier-invoices-pill--${detail.paymentStatus}`}>
+                    {detail.paymentStatus}
+                  </span>
+                </div>
+                <label className="supplier-invoices-note">
+                  Payment note
+                  <input
+                    type="text"
+                    value={paymentNote}
+                    disabled={busy}
+                    placeholder="e.g. EFT Absa 13 Jul"
+                    onChange={(e) => setPaymentNote(e.target.value)}
+                    onBlur={() => {
+                      if (detail && (paymentNote.trim() || '') !== (detail.paymentNote ?? '')) {
+                        void setPayment(detail.paymentStatus)
+                      }
+                    }}
+                  />
+                </label>
+                {detail.paidAt ? <p className="small-print">Paid on {formatDate(detail.paidAt)}</p> : null}
+              </div>
+
+              <h3 className="bo-section-title supplier-invoices-subhead">Lines</h3>
+              <div className="supplier-invoices-lines-wrap">
+                <table className="data-table supplier-invoices-table supplier-invoices-lines-table">
+                  <thead>
+                    <tr>
+                      <th>Code</th>
+                      <th>Description</th>
+                      <th>Qty</th>
+                      <th>Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.lines.map((ln, i) => (
+                      <tr key={i}>
+                        <td data-label="Code">{ln.code ?? '—'}</td>
+                        <td data-label="Description">{ln.description}</td>
+                        <td data-label="Qty">{ln.qty ?? '—'}</td>
+                        <td data-label="Unit">{ln.unitCost ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <h3 className="bo-section-title supplier-invoices-subhead">Source page</h3>
               {detail.pageCount > 1 ? (
-                <div className="layout-teach-actions">
+                <div className="supplier-invoices-toolbar">
                   <button
                     type="button"
                     className="btn small ghost"
@@ -326,9 +414,9 @@ export function SupplierInvoicesPage() {
                   </button>
                 </div>
               ) : null}
-              <div className="layout-teach-canvas-scroll" style={{ maxHeight: '55vh' }}>
+              <div className="supplier-invoices-page-scroll">
                 {pageUrl ? (
-                  <img src={pageUrl} alt={`Invoice page ${pageNo}`} className="layout-teach-image" />
+                  <img src={pageUrl} alt={`Invoice page ${pageNo}`} className="supplier-invoices-page-image" />
                 ) : (
                   <p className="muted">Loading page…</p>
                 )}
@@ -337,6 +425,27 @@ export function SupplierInvoicesPage() {
           )}
         </section>
       </div>
+
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        title="Delete invoice?"
+        confirmLabel={busy ? 'Deleting…' : 'Delete invoice'}
+        cancelLabel="Cancel"
+        busy={busy}
+        confirmTone="danger"
+        onConfirm={() => void deleteInvoice()}
+        onCancel={() => {
+          if (!busy) setDeleteConfirmOpen(false)
+        }}
+      >
+        <p>
+          Delete stored invoice <strong>{deleteLabel}</strong>?
+        </p>
+        <p className="muted">
+          This removes the saved pages and payment record from Steve. It does not reverse stock that was
+          already applied.
+        </p>
+      </ConfirmModal>
     </BoShell>
   )
 }

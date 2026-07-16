@@ -357,7 +357,8 @@ export function InvoiceLayoutTeachPage() {
           columnX: columnCenter(block),
         }
         if (key === 'qty' && lineShape === 'table') {
-          field.valuePattern = String.raw`^\d+$`
+          // Cash & Carry / Sage often print qty as 1.00, 2.00 — not just integers.
+          field.valuePattern = String.raw`^\d+(?:\.\d+)?$`
         } else if (key === 'qty') {
           field.valuePattern = String.raw`\d+\s*PCS`
         }

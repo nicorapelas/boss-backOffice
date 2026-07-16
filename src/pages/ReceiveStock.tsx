@@ -1082,14 +1082,15 @@ export function ReceiveStockPage() {
                 {matchResult.stats.exact} exact · {matchResult.stats.likely} likely · {matchResult.stats.uncertain}{' '}
                 to check · {matchResult.stats.neu} new. Wrong guess? Use <strong>SKU lookup</strong> on any line.
               </p>
+              <div className="receive-stock-matches-wrap">
               <table className="table receive-stock-matches-table">
                 <thead>
                   <tr>
-                    <th>Invoice line</th>
-                    <th style={{ width: '7rem' }}>Confidence</th>
-                    <th style={{ width: '9rem' }}>Action</th>
-                    <th>Match / new item</th>
-                    <th style={{ width: '8rem' }}>New price</th>
+                    <th className="receive-stock-col-line">Invoice line</th>
+                    <th className="receive-stock-col-conf">Confidence</th>
+                    <th className="receive-stock-col-action">Action</th>
+                    <th className="receive-stock-col-match">Match / new item</th>
+                    <th className="receive-stock-col-price">New price</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1098,15 +1099,15 @@ export function ReceiveStockPage() {
                     if (!dec) return null
                     const preview = previewNewPriceForRow(idx)
                     return (
-                      <tr key={idx}>
-                        <td>
+                      <tr key={idx} className="receive-stock-match-row">
+                        <td data-label="Invoice line">
                           <div className="receive-stock-match-desc">{ml.input.description}</div>
                           <div className="receive-stock-match-meta">
                             {ml.input.code ? `${ml.input.code} · ` : ''}
                             qty {ml.input.qty ?? '—'} · cost {ml.input.unitCost ?? '—'}
                           </div>
                         </td>
-                        <td>
+                        <td data-label="Confidence">
                           <span
                             className="receive-stock-confidence"
                             style={{ background: CONFIDENCE_COLOR[ml.confidence] }}
@@ -1114,7 +1115,7 @@ export function ReceiveStockPage() {
                             {CONFIDENCE_LABEL[ml.confidence]}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Action">
                           <select
                             value={dec.action}
                             onChange={(e) => setDecision(idx, { action: e.target.value as RowDecision['action'] })}
@@ -1124,14 +1125,13 @@ export function ReceiveStockPage() {
                             <option value="skip">Skip</option>
                           </select>
                         </td>
-                        <td>
+                        <td data-label="Match / new item">
                           {dec.action === 'update' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                            <div className="receive-stock-match-controls">
+                              <div className="receive-stock-match-pick">
                                 <select
                                   value={dec.productId ?? ''}
                                   onChange={(e) => setDecision(idx, { productId: e.target.value || null })}
-                                  style={{ flex: 1, minWidth: 0 }}
                                 >
                                   <option value="">— pick product —</option>
                                   {matchOptionsForRow(idx).map((c) => (
@@ -1150,47 +1150,46 @@ export function ReceiveStockPage() {
                                 </button>
                               </div>
                               {productForRow(idx) ? (
-                                <span className="muted" style={{ fontSize: '0.78rem' }}>
+                                <span className="muted receive-stock-match-selected">
                                   Selected: {productForRow(idx)?.sku} · {productForRow(idx)?.name}
                                 </span>
                               ) : null}
                             </div>
                           )}
                           {dec.action === 'create' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <div className="receive-stock-match-controls">
                               <input
                                 value={dec.newName}
                                 placeholder="Name"
                                 onChange={(e) => setDecision(idx, { newName: e.target.value })}
                               />
-                              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <div className="receive-stock-match-pick">
                                 <input
                                   value={dec.newSku}
                                   placeholder="SKU"
                                   onChange={(e) => setDecision(idx, { newSku: e.target.value })}
-                                  style={{ width: '6rem' }}
+                                  className="receive-stock-new-sku"
                                 />
                                 <input
                                   value={dec.newCategory}
                                   placeholder="Category (optional)"
                                   onChange={(e) => setDecision(idx, { newCategory: e.target.value })}
-                                  style={{ flex: 1 }}
                                 />
                               </div>
                               {countVariantSiblings(matchResult.lines, idx) > 0 ? (
-                                <span className="muted" style={{ fontSize: '0.78rem' }}>
+                                <span className="muted receive-stock-match-selected">
                                   Colour variant — shares one SKU with matching lines on this invoice.
                                 </span>
                               ) : null}
                               {!dec.newSku.trim() && catalogSkus.length === 0 ? (
-                                <span className="muted" style={{ fontSize: '0.78rem' }}>
+                                <span className="muted receive-stock-match-selected">
                                   Loading next SKU…
                                 </span>
                               ) : null}
                             </div>
                           )}
                           {dec.action === 'skip' && (
-                            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                            <div className="receive-stock-match-pick">
                               <span className="muted">Skipped</span>
                               <button
                                 type="button"
@@ -1202,7 +1201,7 @@ export function ReceiveStockPage() {
                             </div>
                           )}
                         </td>
-                        <td>
+                        <td data-label="New price">
                           {dec.action === 'skip' ? (
                             <span className="muted">—</span>
                           ) : (
@@ -1211,11 +1210,11 @@ export function ReceiveStockPage() {
                               placeholder={preview != null ? String(preview) : 'price'}
                               inputMode="decimal"
                               onChange={(e) => setDecision(idx, { priceInput: e.target.value })}
-                              style={{ width: '6rem' }}
+                              className="receive-stock-price-input"
                             />
                           )}
                           {dec.action === 'update' && (
-                            <label style={{ display: 'block', fontSize: '0.75rem' }} className="muted">
+                            <label className="muted receive-stock-update-price">
                               <input
                                 type="checkbox"
                                 checked={dec.updatePrice}
@@ -1230,7 +1229,8 @@ export function ReceiveStockPage() {
                   })}
                 </tbody>
               </table>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+              </div>
+              <div className="receive-stock-match-actions">
                 <button
                   type="button"
                   className="btn primary"
